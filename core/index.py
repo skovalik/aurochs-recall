@@ -508,22 +508,100 @@ def _resolve_ingestor(type_name: str):
     return cls()
 
 
-def _walk_source_files(root: Path, ingestor) -> Iterator[Path]:
+def _walk_source_files(root: Path, ingestor, source=None) -> Iterator[Path]:
     """Yield candidate files under ``root`` that ``ingestor`` accepts.
 
     Handles single-file source paths (e.g. claude_ai's
     ``conversations.json``) by yielding just that file. Directories are
-    walked with ``rglob('*')`` and filtered through ``can_handle``.
+    walked with ``rglob('*')`` and filtered through ``can_handle``,
+    then through the ``source.include`` / ``source.exclude`` glob
+    patterns from sources.toml (B3 fix).
+
+    ``source`` is the ``SourceEntry`` (or None for legacy callers).
+    When provided, glob patterns are applied as follows:
+
+    * ``exclude`` (deny-list): any matching path is skipped. Patterns
+      are evaluated against the absolute path AND the path relative
+      to ``root`` so authors can write either ``"**/.git/**"`` or
+      ``".git/**"``.
+    * ``include`` (allow-list): if non-empty, only paths matching
+      one of the patterns pass. If empty/None, all paths pass.
+      Exclude takes precedence over include.
+
+    Patterns are matched via ``fnmatch.fnmatch`` against three
+    candidate strings (absolute posix path, root-relative posix
+    path, bare filename) so both ``**/node_modules/**`` and
+    ``node_modules/**`` and ``*.tmp`` work as authors expect.
     """
     if root.is_file():
         if ingestor.can_handle(root):
-            yield root
+            if _path_passes_filters(root, root.parent, source):
+                yield root
         return
     if not root.exists():
         return
     for path in sorted(root.rglob("*")):
-        if path.is_file() and ingestor.can_handle(path):
-            yield path
+        if not (path.is_file() and ingestor.can_handle(path)):
+            continue
+        if not _path_passes_filters(path, root, source):
+            continue
+        yield path
+
+
+def _path_passes_filters(path: Path, root: Path, source) -> bool:
+    """Apply ``source.exclude`` (deny) and ``source.include`` (allow) globs.
+
+    Returns True iff the path should be processed. ``source`` may be
+    None (no filters) or have ``.include`` / ``.exclude`` tuples.
+
+    Patterns are matched against:
+
+    1. The absolute path (so ``**/node_modules/**`` works).
+    2. The path relative to ``root`` (so ``node_modules/**`` works).
+    3. The bare file name (so ``*.tmp`` works).
+
+    Any of those matching counts as a hit. Exclude takes precedence
+    over include — a path that matches both is dropped.
+    """
+    if source is None:
+        return True
+    excludes = getattr(source, "exclude", ()) or ()
+    includes = getattr(source, "include", ()) or ()
+    if not excludes and not includes:
+        return True
+
+    import fnmatch
+
+    # Build the candidate strings the glob is matched against.
+    posix_abs = path.as_posix()
+    try:
+        rel = path.relative_to(root).as_posix()
+    except ValueError:
+        rel = posix_abs
+    name = path.name
+
+    def _matches(pattern: str) -> bool:
+        # fnmatch is the simplest cross-platform glob; ** works as a
+        # plain wildcard against the joined posix path.
+        return (
+            fnmatch.fnmatch(posix_abs, pattern)
+            or fnmatch.fnmatch(rel, pattern)
+            or fnmatch.fnmatch(name, pattern)
+        )
+
+    # Exclude: deny if any pattern matches.
+    for pattern in excludes:
+        if _matches(pattern):
+            return False
+
+    # Include: if non-empty, require at least one match.
+    if includes:
+        for pattern in includes:
+            if _matches(pattern):
+                return True
+        return False
+
+    return True
 
 
 def _extract_with_sink(ingestor, file_path: Path, sink) -> Iterator[Drawer]:
@@ -625,7 +703,7 @@ def run_index(
                         fix_hint=_suggest_fix_hint(reason),
                     )
 
-                for file_path in _walk_source_files(root, ingestor):
+                for file_path in _walk_source_files(root, ingestor, source):
                     if quick and not _file_needs_index(
                         conn, source.name, file_path
                     ):

@@ -1,6 +1,7 @@
 """Unit tests for the ``run_index`` orchestrator.
 
-Covers patch B2 (ingest_errors writes).
+Covers patches B2 (ingest_errors writes) and B3 (sources.toml
+include/exclude pattern application).
 """
 
 from __future__ import annotations
@@ -12,11 +13,13 @@ from pathlib import Path
 import pytest
 
 from core.index import (
+    _path_passes_filters,
     _record_ingest_error,
     _suggest_fix_hint,
     run_index,
 )
 from core.migrations.runner import run_migrations
+from core.sources_config import SourceEntry
 
 
 # ---------------------------------------------------------------------------
@@ -298,4 +301,164 @@ class TestRunIndexIngestErrors:
         # Should reference the source and a hint.
         assert "claude_code" in out
 
+
+# ---------------------------------------------------------------------------
+# B3 — sources.toml exclude/include glob filtering
+# ---------------------------------------------------------------------------
+
+
+class TestPathPassesFilters:
+    def test_no_filters_passes(self, tmp_path: Path) -> None:
+        p = tmp_path / "foo.md"
+        p.write_text("x", encoding="utf-8")
+        src = SourceEntry(name="x", type="markdown", path=str(tmp_path))
+        assert _path_passes_filters(p, tmp_path, src) is True
+
+    def test_none_source_passes(self, tmp_path: Path) -> None:
+        p = tmp_path / "foo.md"
+        p.write_text("x", encoding="utf-8")
+        assert _path_passes_filters(p, tmp_path, None) is True
+
+    def test_exclude_drops_match(self, tmp_path: Path) -> None:
+        nm = tmp_path / "node_modules" / "foo.md"
+        nm.parent.mkdir()
+        nm.write_text("x", encoding="utf-8")
+        src = SourceEntry(
+            name="x", type="markdown", path=str(tmp_path),
+            exclude=("**/node_modules/**",),
+        )
+        assert _path_passes_filters(nm, tmp_path, src) is False
+
+    def test_exclude_relative_pattern(self, tmp_path: Path) -> None:
+        """``node_modules/**`` (relative form) should also work."""
+        nm = tmp_path / "node_modules" / "foo.md"
+        nm.parent.mkdir()
+        nm.write_text("x", encoding="utf-8")
+        src = SourceEntry(
+            name="x", type="markdown", path=str(tmp_path),
+            exclude=("node_modules/**",),
+        )
+        assert _path_passes_filters(nm, tmp_path, src) is False
+
+    def test_include_only_allows_matching(self, tmp_path: Path) -> None:
+        good = tmp_path / "notes" / "good.md"
+        good.parent.mkdir()
+        good.write_text("x", encoding="utf-8")
+        bad = tmp_path / "drafts" / "bad.md"
+        bad.parent.mkdir()
+        bad.write_text("x", encoding="utf-8")
+
+        src = SourceEntry(
+            name="x", type="markdown", path=str(tmp_path),
+            include=("notes/**",),
+        )
+        assert _path_passes_filters(good, tmp_path, src) is True
+        assert _path_passes_filters(bad, tmp_path, src) is False
+
+    def test_exclude_takes_precedence_over_include(self, tmp_path: Path) -> None:
+        """If a path matches both include and exclude, exclude wins."""
+        p = tmp_path / "notes" / "secret.md"
+        p.parent.mkdir()
+        p.write_text("x", encoding="utf-8")
+        src = SourceEntry(
+            name="x", type="markdown", path=str(tmp_path),
+            include=("notes/**",),
+            exclude=("**/secret.md",),
+        )
+        assert _path_passes_filters(p, tmp_path, src) is False
+
+    def test_exclude_filename_pattern(self, tmp_path: Path) -> None:
+        """``*.tmp`` matches against the bare filename."""
+        p = tmp_path / "foo.tmp"
+        p.write_text("x", encoding="utf-8")
+        src = SourceEntry(
+            name="x", type="markdown", path=str(tmp_path),
+            exclude=("*.tmp",),
+        )
+        assert _path_passes_filters(p, tmp_path, src) is False
+
+
+class TestRunIndexAppliesGlobs:
+    def test_excludes_dropped_during_walk(self, tmp_path: Path) -> None:
+        """Synthetic markdown source with files inside node_modules and a
+        clean dir; exclude should keep only the clean files."""
+        clean_dir = tmp_path / "notes"
+        clean_dir.mkdir()
+        nm_dir = tmp_path / "node_modules" / "pkg"
+        nm_dir.mkdir(parents=True)
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
+
+        # Markdown ingestor needs MIN_CONTENT_LEN of content (30 chars).
+        body = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " * 3
+        (clean_dir / "ok.md").write_text(body, encoding="utf-8")
+        (nm_dir / "noise.md").write_text(body, encoding="utf-8")
+        (git_dir / "log.md").write_text(body, encoding="utf-8")
+
+        cfg = tmp_path / "sources.toml"
+        db = tmp_path / "recall.db"
+        root_str = str(tmp_path).replace("\\", "\\\\")
+        cfg.write_text(
+            f"schema_version = 1\n\n"
+            f'[database]\npath = "{str(db).replace(chr(92), chr(92) + chr(92))}"\n\n'
+            f'[[sources]]\nname = "notes"\ntype = "markdown"\n'
+            f'path = "{root_str}"\nenabled = true\n'
+            f'exclude = ["**/node_modules/**", "**/.git/**"]\n',
+            encoding="utf-8",
+        )
+
+        rc = run_index(config_path=cfg, db_path=db)
+        assert rc == 0
+
+        conn = sqlite3.connect(str(db))
+        try:
+            # All indexed drawers' source_path should NOT contain
+            # node_modules or .git.
+            rows = conn.execute(
+                "SELECT source_path FROM drawer_meta"
+            ).fetchall()
+            assert len(rows) >= 1
+            for (sp,) in rows:
+                assert "node_modules" not in sp, sp
+                assert ".git" not in sp, sp
+            # And clean file should be there.
+            assert any("ok.md" in (sp or "") for (sp,) in rows)
+        finally:
+            conn.close()
+
+    def test_include_allowlist_filters_to_match(self, tmp_path: Path) -> None:
+        """Only files matching the include pattern get indexed."""
+        ok_dir = tmp_path / "notes"
+        ok_dir.mkdir()
+        skip_dir = tmp_path / "drafts"
+        skip_dir.mkdir()
+        body = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " * 3
+        (ok_dir / "kept.md").write_text(body, encoding="utf-8")
+        (skip_dir / "ignored.md").write_text(body, encoding="utf-8")
+
+        cfg = tmp_path / "sources.toml"
+        db = tmp_path / "recall.db"
+        root_str = str(tmp_path).replace("\\", "\\\\")
+        cfg.write_text(
+            f"schema_version = 1\n\n"
+            f'[database]\npath = "{str(db).replace(chr(92), chr(92) + chr(92))}"\n\n'
+            f'[[sources]]\nname = "notes"\ntype = "markdown"\n'
+            f'path = "{root_str}"\nenabled = true\n'
+            f'include = ["notes/**"]\n',
+            encoding="utf-8",
+        )
+
+        rc = run_index(config_path=cfg, db_path=db)
+        assert rc == 0
+
+        conn = sqlite3.connect(str(db))
+        try:
+            rows = conn.execute(
+                "SELECT source_path FROM drawer_meta"
+            ).fetchall()
+            for (sp,) in rows:
+                assert "kept.md" in (sp or "")
+                assert "ignored.md" not in (sp or "")
+        finally:
+            conn.close()
 
