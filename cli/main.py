@@ -836,6 +836,22 @@ def _cmd_graph_entity(args: argparse.Namespace) -> int:
             return 1
         for ent in ent_rows:
             print(f"# {ent['name']}  ({ent['type']})  id={ent['id']}")
+
+            # Drawer mentions (always-on linker / extractor output).
+            mentions = conn.execute(
+                "SELECT m.drawer_uid, m.confidence, m.detected_by, "
+                "       d.source, d.created_at "
+                "FROM drawer_entity_mentions m "
+                "JOIN drawer_meta d ON d.drawer_uid = m.drawer_uid "
+                "WHERE m.entity_id = ? "
+                "ORDER BY m.detected_at DESC, m.drawer_uid ASC "
+                "LIMIT ?",
+                (ent["id"], args.limit),
+            ).fetchall()
+
+            # Outgoing entity↔entity relationships (LLM-extracted edges,
+            # AUTHORED_BY / USES / etc.). Empty in T0 until the extraction
+            # patch lands.
             rels = conn.execute(
                 "SELECT r.predicate, e2.name AS other_name, e2.type AS other_type, "
                 "       r.drawer_uid, r.valid_from, r.valid_to "
@@ -846,11 +862,26 @@ def _cmd_graph_entity(args: argparse.Namespace) -> int:
                 "LIMIT ?",
                 (ent["id"], args.limit),
             ).fetchall()
-            if not rels:
-                print("  (no outgoing relationships)")
-            for r in rels:
-                cite = f"  [{r['drawer_uid']}]" if r["drawer_uid"] else ""
-                print(f"  {r['predicate']:18}-> {r['other_name']} ({r['other_type']}){cite}")
+
+            if not mentions and not rels:
+                print("  (no mentions or outgoing relationships)")
+
+            if mentions:
+                print(f"  ## Mentioned in {len(mentions)} drawer(s):")
+                for m in mentions:
+                    conf_tag = "" if m["confidence"] == 1.0 else f"  conf={m['confidence']:.2f}"
+                    print(
+                        f"  - {m['drawer_uid']}"
+                        f"  [{m['detected_by']}{conf_tag}]"
+                    )
+            if rels:
+                print(f"  ## Outgoing relationships:")
+                for r in rels:
+                    cite = f"  [{r['drawer_uid']}]" if r["drawer_uid"] else ""
+                    print(
+                        f"  {r['predicate']:18}-> {r['other_name']} "
+                        f"({r['other_type']}){cite}"
+                    )
     finally:
         conn.close()
     return 0

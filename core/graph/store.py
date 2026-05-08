@@ -1,8 +1,20 @@
 """Basic graph CRUD against the sqlite-only T0 backend.
 
 Kuzu and other graph engines are deferred to ``[graph]`` extra; the T0
-spine reads/writes ``entities`` and ``relationships`` tables directly.
-The API mirrors what plan v4's ``core/graph/store.py`` describes.
+spine reads/writes ``entities``, ``relationships``, and the
+``drawer_entity_mentions`` join table directly. The API mirrors what plan
+v4's ``core/graph/store.py`` describes.
+
+Two distinct edge categories live here:
+
+* **Entity↔entity edges** go in ``relationships``. ``subject_id`` and
+  ``object_id`` both point into ``entities`` and the table's
+  ``CHECK(subject_id != object_id)`` rules out self-loops. Use this for
+  predicates like ``AUTHORED_BY``, ``USES``, ``LOCATED_IN``.
+* **Drawer→entity mentions** go in ``drawer_entity_mentions``. Drawers
+  aren't entities, so they can't appear on either side of a relationship
+  edge. The join table records "drawer X mentions entity Y" with a
+  ``detected_by`` provenance column (``linker | extractor | manual``).
 """
 
 from __future__ import annotations
@@ -152,71 +164,49 @@ def link_drawer_to_entity(
     conn: sqlite3.Connection,
     drawer_uid: str,
     entity_id: int,
-    predicate: str,
     *,
-    metadata: dict[str, Any] | None = None,
-    valid_from: int | None = None,
-) -> Relationship:
-    """Create a relationship (drawer mentions/uses/etc. an entity).
+    confidence: float = 1.0,
+    detected_by: str = "linker",
+    detected_at: int | None = None,
+) -> bool:
+    """Record that ``drawer_uid`` mentions ``entity_id``.
 
-    The relationship's ``subject_id`` is the entity, the ``object_id`` is
-    a synthetic "drawer-as-entity" pattern is NOT used here — instead we
-    store the drawer_uid in the ``drawer_uid`` citation column and use a
-    self-referential subject==object fallback for the case where the
-    drawer doesn't directly correspond to a separate entity.
+    Writes to the ``drawer_entity_mentions`` join table. The (drawer_uid,
+    entity_id) primary key is the dedup point — re-linking the same pair
+    is idempotent.
 
-    For T0, the simpler interpretation is: ``predicate`` is something like
-    ``MENTIONS`` and ``subject`` and ``object`` are both the entity (with
-    drawer_uid carrying the citation context). The CHECK constraint
-    ``subject_id != object_id`` rules out exact loops, so for direct
-    "drawer mentions entity X" we record the entity twice would fail —
-    instead we record (entity, MENTIONS, entity) only when the drawer
-    establishes the entity's existence, and use the drawer_uid column as
-    the citation that's queried on retrieval.
+    Parameters
+    ----------
+    drawer_uid:
+        Citation target. Must already exist in ``drawer_meta``.
+    entity_id:
+        FK into ``entities``. Must already exist (use ``add_entity`` first).
+    confidence:
+        0.0–1.0. ``linker`` always uses 1.0; future ``extractor`` paths
+        may emit a lower value when an LLM is uncertain.
+    detected_by:
+        Provenance: ``linker | extractor | manual``.
+    detected_at:
+        Epoch seconds. Defaults to ``time.time()``.
 
-    A future patch reworks this once the LLM extraction layer lands and
-    we know what shape edge-from-drawer extraction produces.
-
-    For the T0 happy path: this function inserts a self-edge with
-    ``predicate = 'MENTIONS'`` and the drawer_uid set, and is what the
-    seed-entity linker calls. Tests verify the row exists and is
-    queryable by ``drawer_uid``.
+    Returns ``True`` if a new row was inserted, ``False`` if the mention
+    was already on file (idempotent re-link).
     """
-    timestamp = valid_from if valid_from is not None else int(time.time())
-    metadata_json = json.dumps(metadata) if metadata else None
-
-    # T0 simplification: subject == object == entity_id violates the
-    # CHECK(subject_id != object_id) constraint. So we represent the
-    # "drawer mentions entity" link by inserting an *anchor* relationship
-    # only when the predicate is NOT a self-edge — for MENTIONS we instead
-    # write into a future-proofed pattern where the entity links to itself
-    # via a synthetic "self" anchor. To avoid adding schema for that in T0,
-    # we require the caller to provide a distinct subject and object when
-    # they want a graph edge; the seed-entity linker uses the (entity,
-    # MENTIONS, entity) interpretation by inserting two rows with the
-    # entity as both subject and as a special "drawer_anchor" node — but
-    # that's premature complexity for T0.
-    #
-    # Concrete T0 contract: this function expects ``entity_id`` to be the
-    # SUBJECT, and the seed linker passes a second pre-resolved object
-    # entity (e.g. linking entity → drawer-source entity). When the linker
-    # only has a single entity and a drawer_uid, it stores the citation
-    # with subject = object = entity_id only if a CHECK relaxation lands;
-    # for T0 we punt and store a degenerate (entity, MENTIONS, entity) by
-    # using the drawer-as-entity pattern below.
-    #
-    # Pragmatic implementation: if the linker passes entity_id only, we
-    # insert (subject=entity, predicate, object=entity_self_token) where
-    # entity_self_token is resolved to a different entity row representing
-    # "the drawer itself" — for T0 this means linking back to a synthetic
-    # 'drawer' entity created on demand. To avoid overcomplicating the T0
-    # spine, the canonical link_drawer_to_entity API takes BOTH a
-    # subject_id and object_id under different names; the legacy single-
-    # entity callers use ``link_entity_in_drawer`` instead.
-    raise NotImplementedError(
-        "Use link_entity_in_drawer for T0; link_drawer_to_entity reserved for "
-        "the post-extraction patch where drawer-as-subject is materialized."
+    if not 0.0 <= confidence <= 1.0:
+        raise ValueError(f"confidence must be in [0.0, 1.0], got {confidence!r}")
+    if detected_by not in ("linker", "extractor", "manual"):
+        raise ValueError(
+            f"detected_by must be one of linker | extractor | manual, "
+            f"got {detected_by!r}"
+        )
+    now = detected_at if detected_at is not None else int(time.time())
+    cursor = conn.execute(
+        "INSERT OR IGNORE INTO drawer_entity_mentions "
+        "(drawer_uid, entity_id, confidence, detected_by, detected_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (drawer_uid, entity_id, confidence, detected_by, now),
     )
+    return cursor.rowcount > 0
 
 
 def link_entity_in_drawer(
@@ -224,69 +214,57 @@ def link_entity_in_drawer(
     drawer_uid: str,
     entity_id: int,
     *,
-    predicate: str = "MENTIONS",
+    confidence: float = 1.0,
+    detected_by: str = "linker",
+    detected_at: int | None = None,
+    # Legacy kwargs accepted but ignored — they were used by the synthetic-
+    # entity workaround that this function replaces. Kept here so a stale
+    # caller doesn't blow up; future patches can drop them.
+    predicate: str | None = None,
     metadata: dict[str, Any] | None = None,
     valid_from: int | None = None,
-) -> int:
-    """T0 flavor of drawer-to-entity linking.
+) -> bool:
+    """Compatibility alias for :func:`link_drawer_to_entity`.
 
-    Records that ``drawer_uid`` mentions ``entity_id`` by inserting a
-    relationship with subject == object == entity_id. The CHECK constraint
-    ``subject_id != object_id`` would normally block this, so we use a
-    paired-entity pattern: each drawer_uid becomes a synthetic entity of
-    type ``concept`` named ``drawer:<uid>``, and the relationship is
-    (drawer-entity, MENTIONS, real-entity).
+    Earlier T0 prototypes split these two functions because the schema
+    forced a workaround. Plan v5 collapses them into one — this name
+    survives because it reads more naturally at the call site (the seed
+    linker says "link this entity in this drawer"), and because external
+    code may already import it.
 
-    This keeps the schema CHECK happy and gives us a queryable graph edge.
-    Returns the new relationship's ``id``.
+    Returns ``True`` on first insert, ``False`` if the mention already
+    existed (idempotent).
+
+    The ``predicate``, ``metadata``, and ``valid_from`` kwargs are
+    accepted but ignored — those concepts belong on entity↔entity edges,
+    not on drawer mentions. They will be removed once T0 stabilizes.
     """
-    timestamp = valid_from if valid_from is not None else int(time.time())
-    metadata_json = json.dumps(metadata) if metadata else None
-
-    drawer_entity_name = f"drawer:{drawer_uid}"
-    drawer_entity = add_entity(
+    del predicate, metadata, valid_from  # legacy kwargs, intentionally ignored
+    return link_drawer_to_entity(
         conn,
-        drawer_entity_name,
-        "concept",
-        metadata={"drawer_uid": drawer_uid, "synthetic": True},
-        source="seed",
+        drawer_uid,
+        entity_id,
+        confidence=confidence,
+        detected_by=detected_by,
+        detected_at=detected_at,
     )
-    if drawer_entity.id == entity_id:
-        # Pathological edge case (the entity name happens to collide with
-        # a synthetic drawer entity name). Bail rather than violate CHECK.
-        raise ValueError(
-            f"Cannot link drawer-entity to itself: entity_id={entity_id}, "
-            f"synthetic_drawer_entity_id={drawer_entity.id}"
-        )
-
-    cursor = conn.execute(
-        "INSERT INTO relationships "
-        "(subject_id, predicate, object_id, valid_from, valid_to, "
-        " drawer_uid, metadata) VALUES (?, ?, ?, ?, NULL, ?, ?)",
-        (
-            drawer_entity.id,
-            predicate,
-            entity_id,
-            timestamp,
-            drawer_uid,
-            metadata_json,
-        ),
-    )
-    return cursor.lastrowid or 0
 
 
 def list_entities_for_drawer(
     conn: sqlite3.Connection,
     drawer_uid: str,
 ) -> list[Entity]:
-    """Return every entity linked to ``drawer_uid`` via any relationship."""
+    """Return every entity linked to ``drawer_uid`` via the mentions table.
+
+    Joins ``drawer_entity_mentions`` to ``entities`` so callers get fully
+    hydrated ``Entity`` objects in deterministic name order.
+    """
     rows = conn.execute(
-        "SELECT DISTINCT e.id, e.name, e.type, e.metadata, "
+        "SELECT e.id, e.name, e.type, e.metadata, "
         "       e.first_seen, e.last_seen, e.source "
         "FROM entities e "
-        "JOIN relationships r ON r.object_id = e.id "
-        "WHERE r.drawer_uid = ? "
-        "  AND e.name NOT LIKE 'drawer:%' "
+        "JOIN drawer_entity_mentions m ON m.entity_id = e.id "
+        "WHERE m.drawer_uid = ? "
         "ORDER BY e.name",
         (drawer_uid,),
     ).fetchall()
@@ -311,3 +289,28 @@ def list_entities_for_drawer(
             )
         )
     return out
+
+
+def list_drawers_for_entity(
+    conn: sqlite3.Connection,
+    entity_id: int,
+    *,
+    limit: int | None = None,
+) -> list[str]:
+    """Return drawer_uids that mention ``entity_id``.
+
+    Ordered by ``detected_at`` descending (newest first). Pass ``limit``
+    to cap the result count — useful for the CLI's ``recall graph
+    entity NAME --limit N`` path.
+    """
+    sql = (
+        "SELECT drawer_uid FROM drawer_entity_mentions "
+        "WHERE entity_id = ? "
+        "ORDER BY detected_at DESC, drawer_uid ASC"
+    )
+    params: tuple[Any, ...] = (entity_id,)
+    if limit is not None:
+        sql += " LIMIT ?"
+        params = (entity_id, int(limit))
+    rows = conn.execute(sql, params).fetchall()
+    return [row["drawer_uid"] for row in rows]

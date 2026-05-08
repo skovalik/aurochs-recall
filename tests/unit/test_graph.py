@@ -5,11 +5,15 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+import pytest
+
 from core.db import connect
 from core.graph.linker import Linker, SeedEntity
 from core.graph.store import (
     add_entity,
+    link_drawer_to_entity,
     link_entity_in_drawer,
+    list_drawers_for_entity,
     list_entities_for_drawer,
     query_entity,
 )
@@ -110,7 +114,7 @@ class TestQueryEntity:
 # ---------------------------------------------------------------------------
 
 class TestLinkEntityInDrawer:
-    def test_creates_relationship(self, tmp_path: Path) -> None:
+    def test_creates_mention(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
         conn = connect(db)
         try:
@@ -137,15 +141,30 @@ class TestLinkEntityInDrawer:
             )
 
             stefan = add_entity(conn, "Stefan", "person")
-            rel_id = link_entity_in_drawer(conn, drawer.drawer_uid, stefan.id)
-            assert rel_id > 0
+            inserted = link_entity_in_drawer(conn, drawer.drawer_uid, stefan.id)
+            assert inserted is True
 
             row = conn.execute(
-                "SELECT predicate, drawer_uid FROM relationships WHERE id = ?",
-                (rel_id,),
+                "SELECT drawer_uid, entity_id, confidence, detected_by "
+                "FROM drawer_entity_mentions "
+                "WHERE drawer_uid = ? AND entity_id = ?",
+                (drawer.drawer_uid, stefan.id),
             ).fetchone()
-            assert row["predicate"] == "MENTIONS"
+            assert row is not None
             assert row["drawer_uid"] == drawer.drawer_uid
+            assert row["entity_id"] == stefan.id
+            assert row["confidence"] == 1.0
+            assert row["detected_by"] == "linker"
+
+            # Idempotent re-link returns False, no extra row inserted.
+            again = link_entity_in_drawer(conn, drawer.drawer_uid, stefan.id)
+            assert again is False
+            count = conn.execute(
+                "SELECT COUNT(*) AS n FROM drawer_entity_mentions "
+                "WHERE drawer_uid = ? AND entity_id = ?",
+                (drawer.drawer_uid, stefan.id),
+            ).fetchone()
+            assert count["n"] == 1
         finally:
             conn.close()
 
@@ -182,6 +201,102 @@ class TestLinkEntityInDrawer:
             linked = list_entities_for_drawer(conn, drawer.drawer_uid)
             names = {e.name for e in linked}
             assert names == {"Stefan", "Aurochs"}
+        finally:
+            conn.close()
+
+    def test_link_drawer_to_entity_canonical_api(self, tmp_path: Path) -> None:
+        """The canonical name link_drawer_to_entity is callable and shares
+        state with link_entity_in_drawer (they're aliases of each other)."""
+        db = _setup(tmp_path)
+        conn = connect(db)
+        try:
+            drawer = Drawer(
+                source="markdown", source_id="f:0", role="wiki",
+                content="x", created_at=0,
+            )
+            conn.execute(
+                "INSERT INTO drawer_meta "
+                "(drawer_uid, source, source_id, role, created_at, content_hash) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (drawer.drawer_uid, drawer.source, drawer.source_id,
+                 drawer.role, drawer.created_at, drawer.content_hash),
+            )
+            stefan = add_entity(conn, "Stefan", "person")
+
+            # Insert via the canonical name; verify the alias sees it.
+            assert link_drawer_to_entity(conn, drawer.drawer_uid, stefan.id) is True
+            # Same call via the alias is idempotent (already inserted).
+            assert link_entity_in_drawer(conn, drawer.drawer_uid, stefan.id) is False
+
+        finally:
+            conn.close()
+
+    def test_link_drawer_to_entity_validates_inputs(self, tmp_path: Path) -> None:
+        db = _setup(tmp_path)
+        conn = connect(db)
+        try:
+            drawer = Drawer(
+                source="markdown", source_id="f:0", role="wiki",
+                content="x", created_at=0,
+            )
+            conn.execute(
+                "INSERT INTO drawer_meta "
+                "(drawer_uid, source, source_id, role, created_at, content_hash) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (drawer.drawer_uid, drawer.source, drawer.source_id,
+                 drawer.role, drawer.created_at, drawer.content_hash),
+            )
+            stefan = add_entity(conn, "Stefan", "person")
+
+            # confidence out of range
+            with pytest.raises(ValueError):
+                link_drawer_to_entity(
+                    conn, drawer.drawer_uid, stefan.id, confidence=1.5
+                )
+            with pytest.raises(ValueError):
+                link_drawer_to_entity(
+                    conn, drawer.drawer_uid, stefan.id, confidence=-0.1
+                )
+            # bad detected_by sentinel
+            with pytest.raises(ValueError):
+                link_drawer_to_entity(
+                    conn, drawer.drawer_uid, stefan.id, detected_by="rumor"
+                )
+        finally:
+            conn.close()
+
+    def test_list_drawers_for_entity(self, tmp_path: Path) -> None:
+        """Reverse lookup: entity → drawers that mention it."""
+        db = _setup(tmp_path)
+        conn = connect(db)
+        try:
+            drawer_a = Drawer(
+                source="markdown", source_id="a", role="wiki",
+                content="alpha mentions Stefan", created_at=10,
+            )
+            drawer_b = Drawer(
+                source="markdown", source_id="b", role="wiki",
+                content="bravo mentions Stefan too", created_at=20,
+            )
+            for d in (drawer_a, drawer_b):
+                conn.execute(
+                    "INSERT INTO drawer_meta "
+                    "(drawer_uid, source, source_id, role, created_at, content_hash) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (d.drawer_uid, d.source, d.source_id, d.role,
+                     d.created_at, d.content_hash),
+                )
+            stefan = add_entity(conn, "Stefan", "person")
+            link_entity_in_drawer(conn, drawer_a.drawer_uid, stefan.id, detected_at=10)
+            link_entity_in_drawer(conn, drawer_b.drawer_uid, stefan.id, detected_at=20)
+
+            uids = list_drawers_for_entity(conn, stefan.id)
+            assert set(uids) == {drawer_a.drawer_uid, drawer_b.drawer_uid}
+            # Order is detected_at DESC; b has the larger timestamp.
+            assert uids[0] == drawer_b.drawer_uid
+
+            limited = list_drawers_for_entity(conn, stefan.id, limit=1)
+            assert limited == [drawer_b.drawer_uid]
         finally:
             conn.close()
 

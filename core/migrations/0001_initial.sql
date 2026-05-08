@@ -140,6 +140,36 @@ CREATE INDEX IF NOT EXISTS idx_rel_temporal  ON relationships(valid_from, valid_
 CREATE INDEX IF NOT EXISTS idx_rel_drawer    ON relationships(drawer_uid);
 
 -- ============================================================================
+-- Drawer ↔ entity mentions (join table)
+-- ============================================================================
+-- The `relationships` table models entity↔entity edges with subject_id and
+-- object_id both pointing into `entities`. Its CHECK(subject_id != object_id)
+-- intentionally rules out self-loops, which means it cannot directly model
+-- "drawer X mentions entity Y" — drawers aren't entities. This dedicated
+-- join table holds those mentions cleanly, with the entity row as the FK
+-- target on one side and the drawer_uid on the other.
+--
+-- Always-on linkers (seed-entity matcher) write rows here. Future LLM
+-- extraction passes also write here; their output is `detected_by='extractor'`
+-- with a confidence score below 1.0 if the model emits one.
+
+CREATE TABLE IF NOT EXISTS drawer_entity_mentions (
+  drawer_uid TEXT NOT NULL,
+  entity_id INTEGER NOT NULL,
+  confidence REAL NOT NULL DEFAULT 1.0,
+  detected_by TEXT NOT NULL DEFAULT 'linker',  -- 'linker' | 'extractor' | 'manual'
+  detected_at INTEGER NOT NULL,
+  PRIMARY KEY (drawer_uid, entity_id),
+  CHECK (confidence >= 0.0 AND confidence <= 1.0),
+  CHECK (detected_by IN ('linker', 'extractor', 'manual')),
+  FOREIGN KEY (drawer_uid) REFERENCES drawer_meta(drawer_uid) ON DELETE CASCADE,
+  FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dem_entity   ON drawer_entity_mentions(entity_id);
+CREATE INDEX IF NOT EXISTS idx_dem_detected ON drawer_entity_mentions(detected_by);
+
+-- ============================================================================
 -- Operational tables
 -- ============================================================================
 
