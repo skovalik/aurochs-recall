@@ -359,13 +359,168 @@ def _bulk_insert_drawers(conn: sqlite3.Connection, drawers: Iterable[Drawer]) ->
     return inserted
 
 
-__all__ = [
-    "Ingestor",
-    "Indexer",
-]
-
-
-# Re-export for cleanliness
 def _now() -> int:
     """Return the current epoch second as an int."""
     return int(time.time())
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator: run_index
+# ---------------------------------------------------------------------------
+# This is the entry point the CLI calls. It bridges between the
+# sources_config layer and the actual on-disk ingestors. The
+# ``Indexer`` class above is a lower-level building block; ``run_index``
+# is the top-level "do everything" routine.
+#
+# Design note: ``Indexer.index_source()`` was sketched by the spine
+# agent against a protocol shape (``discover_files`` / ``read_drawers``)
+# that the ingestors don't implement. Rather than refactor either side,
+# this orchestrator uses the real ingestor protocol from
+# ``core/ingest/_base.py`` (``can_handle`` / ``extract``) and the
+# already-tested ``_bulk_insert_drawers`` / ``_file_needs_index`` /
+# ``_record_index_state`` helpers above.
+
+
+_INGESTOR_REGISTRY: dict[str, str] = {
+    "claude_code": "core.ingest.claude_code:ClaudeCodeIngestor",
+    "claude_ai":   "core.ingest.claude_ai:ClaudeAiIngestor",
+    "markdown":    "core.ingest.markdown:MarkdownIngestor",
+    # 'chatgpt' / 'capture' deferred to later patches per plan v5.
+}
+
+
+def _resolve_ingestor(type_name: str):
+    """Import + instantiate the ingestor for a given source-type string."""
+    target = _INGESTOR_REGISTRY.get(type_name)
+    if target is None:
+        raise ValueError(
+            f"Unknown source type {type_name!r}. "
+            f"Supported: {sorted(_INGESTOR_REGISTRY)}"
+        )
+    module_name, _, class_name = target.partition(":")
+    from importlib import import_module
+
+    module = import_module(module_name)
+    cls = getattr(module, class_name)
+    return cls()
+
+
+def _walk_source_files(root: Path, ingestor) -> Iterator[Path]:
+    """Yield candidate files under ``root`` that ``ingestor`` accepts.
+
+    Handles single-file source paths (e.g. claude_ai's
+    ``conversations.json``) by yielding just that file. Directories are
+    walked with ``rglob('*')`` and filtered through ``can_handle``.
+    """
+    if root.is_file():
+        if ingestor.can_handle(root):
+            yield root
+        return
+    if not root.exists():
+        return
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and ingestor.can_handle(path):
+            yield path
+
+
+def run_index(
+    *,
+    config_path: Path | str | None = None,
+    db_path: Path | str | None = None,
+    quick: bool = False,
+) -> int:
+    """Top-level indexer invoked by ``recall index``.
+
+    Returns 0 on success. Walks every enabled source from sources.toml,
+    invokes the appropriate ingestor on each candidate file, and inserts
+    drawers into ``recall.db`` (creating the schema first if absent).
+
+    Parameters
+    ----------
+    config_path:
+        Override sources.toml location. Falls through to
+        ``load_sources_config``'s discovery order if None.
+    db_path:
+        Override the database path. Wins over ``[database].path`` in
+        the config when set.
+    quick:
+        Incremental mode — skip files whose mtime hasn't changed since
+        last index. The default is to walk everything (still cheap because
+        the UNIQUE index makes re-inserts no-ops).
+    """
+    # Lazy import: keeps test fixtures that touch core.index but never
+    # call run_index from paying for the heavier deps.
+    from core.migrations.runner import run_migrations
+    from core.sources_config import (
+        SourcesConfig,
+        default_database_path,
+        load_sources_config,
+    )
+
+    cfg: SourcesConfig = load_sources_config(config_path)
+
+    # --db override takes precedence over the config's [database].path.
+    target_db = (
+        Path(db_path).expanduser().resolve()
+        if db_path is not None
+        else cfg.database_path
+    )
+    target_db.parent.mkdir(parents=True, exist_ok=True)
+
+    # Ensure schema is up-to-date before any insert.
+    run_migrations(target_db)
+
+    enabled = cfg.enabled_sources
+    if not enabled:
+        print("recall index: no enabled sources in sources.toml.")
+        return 0
+
+    total_inserted = 0
+    total_skipped = 0
+    print(f"Indexing into {target_db}")
+    with WriteLock(target_db, timeout=_WRITE_LOCK_TIMEOUT):
+        conn = connect(target_db)
+        try:
+            for source in enabled:
+                root = source.expanded_path
+                ingestor = _resolve_ingestor(source.type)
+                added_for_source = 0
+                files_for_source = 0
+                files_skipped = 0
+                for file_path in _walk_source_files(root, ingestor):
+                    if quick and not _file_needs_index(
+                        conn, source.name, file_path
+                    ):
+                        files_skipped += 1
+                        continue
+                    files_for_source += 1
+                    try:
+                        drawers = list(ingestor.extract(file_path))
+                    except Exception as e:  # ingest-level failure
+                        print(
+                            f"  ! {source.name}: skipped {file_path} ({e})"
+                        )
+                        continue
+                    inserted = _bulk_insert_drawers(conn, drawers)
+                    _record_index_state(conn, source.name, file_path, inserted)
+                    added_for_source += inserted
+                total_inserted += added_for_source
+                total_skipped += files_skipped
+                print(
+                    f"  + {source.name:<24}"
+                    f" files={files_for_source:>4}"
+                    f" skipped={files_skipped:>4}"
+                    f" drawers+={added_for_source}"
+                )
+        finally:
+            conn.close()
+
+    print(f"Indexed {total_inserted} new drawer(s); {total_skipped} file(s) skipped.")
+    return 0
+
+
+__all__ = [
+    "Ingestor",
+    "Indexer",
+    "run_index",
+]

@@ -276,14 +276,14 @@ def _add_index(sub: Any) -> None:
 
 
 def _cmd_index(args: argparse.Namespace) -> int:
-    # The actual indexer is built by the ingest agent. We dispatch to its
-    # public entry point if available; otherwise print a clear pointer.
+    # The orchestrator lives in core.index alongside the lower-level
+    # Indexer class. Keeping the import lazy means single-process tests
+    # that only touch other modules don't pay the import cost.
     try:
-        from core.indexer import run_index  # type: ignore[attr-defined]
+        from core.index import run_index
     except ImportError:
         print(
-            "recall index: indexer module not yet available in this build. "
-            "(Ingest agent ships core/indexer.run_index.)",
+            "recall index: indexer module not yet available in this build.",
             file=sys.stderr,
         )
         return 3
