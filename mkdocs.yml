@@ -1,0 +1,111 @@
+site_name: aurochs-recall
+site_description: "Memory architecture for your AI conversations."
+site_author: Stefan Kovalik
+site_url: https://github.com/skovalik/aurochs-recall
+repo_name: skovalik/aurochs-recall
+repo_url: https://github.com/skovalik/aurochs-recall
+edit_uri: edit/main/docs/
+copyright: "Copyright (c) 2026 Stefan Kovalik. MIT license."
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  palette:
+    # Default to dark with the Aurochs red accent. Toggleable to light.
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark
+  font:
+    # Aurochs brand fonts (Larken / Mundial) are commercial; default to a
+    # close-enough Google fallback so this builds without requiring license
+    # keys at CI time. Swap in the brand fonts via custom CSS once a build
+    # secret carrying the license key is wired up.
+    text: Source Serif 4
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.action.view
+    - toc.follow
+
+extra_css:
+  - assets/aurochs-brand.css
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/skovalik/aurochs-recall
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+  - glightbox
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Concepts: concepts.md
+  - CLI:
+      - CLI reference: cli.md
+  - Configuration:
+      - Sources: sources.md
+      - Migrations: migrations.md
+  - Operations:
+      - Backup & restore: backup-restore.md
+      - Concurrency: concurrency.md
+      - Failure modes: failure-modes.md
+  - Privacy: privacy.md
+  - Contracts: contracts.md
+  - Comparison: comparison.md
+  - FAQ: faq.md
+
+strict: false  # promote to true once docs stabilize
