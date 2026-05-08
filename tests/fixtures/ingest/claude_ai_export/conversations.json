@@ -1,0 +1,123 @@
+[
+  {
+    "uuid": "af7ab762-1234-5678-9abc-def012345678",
+    "name": "Lorem ipsum conversation alpha",
+    "created_at": "2026-04-01T10:00:00Z",
+    "chat_messages": [
+      {
+        "uuid": "msg-alpha-0001",
+        "sender": "human",
+        "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. This is the alpha conversation start.",
+        "created_at": "2026-04-01T10:00:00Z"
+      },
+      {
+        "uuid": "msg-alpha-0002",
+        "sender": "assistant",
+        "text": "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, here is the alpha reply.",
+        "created_at": "2026-04-01T10:00:30Z",
+        "model": "claude-3-test"
+      },
+      {
+        "uuid": "msg-alpha-0003",
+        "sender": "human",
+        "text": "Ut enim ad minim veniam, quis nostrud exercitation, alpha follow-up question is here.",
+        "created_at": "2026-04-01T10:01:00Z"
+      },
+      {
+        "uuid": "msg-alpha-0004",
+        "sender": "human",
+        "text": "ok"
+      }
+    ]
+  },
+  {
+    "uuid": "bc8de901-2345-6789-abcd-ef0123456789",
+    "name": "Lorem ipsum conversation beta",
+    "created_at": "2026-04-02T11:00:00Z",
+    "chat_messages": [
+      {
+        "uuid": "msg-beta-0001",
+        "sender": "human",
+        "text": "Duis aute irure dolor in reprehenderit, beta conversation begins now with a real question.",
+        "created_at": "2026-04-02T11:00:00Z"
+      },
+      {
+        "uuid": "msg-beta-0002",
+        "sender": "assistant",
+        "content": [
+          {"type": "text", "text": "Excepteur sint occaecat cupidatat, beta reply uses the content-block array shape."},
+          {"type": "tool_use", "id": "tu_beta_1"}
+        ],
+        "created_at": "2026-04-02T11:00:30Z"
+      }
+    ]
+  },
+  {
+    "uuid": "cd9ef012-3456-789a-bcde-f01234567890",
+    "name": "Legacy messages-key conversation",
+    "created_at": "2025-12-15T08:00:00Z",
+    "messages": [
+      {
+        "uuid": "msg-legacy-0001",
+        "sender": "human",
+        "text": "Sunt in culpa qui officia deserunt mollit anim, legacy export uses the messages key not chat_messages.",
+        "created_at": "2025-12-15T08:00:00Z"
+      },
+      {
+        "uuid": "msg-legacy-0002",
+        "sender": "assistant",
+        "text": "Et harum quidem rerum facilis est et expedita distinctio, legacy reply is preserved verbatim.",
+        "created_at": "2025-12-15T08:00:30Z"
+      }
+    ]
+  },
+  {
+    "uuid": "de0f1234-5678-9abc-def0-123456789abc",
+    "name": "Both keys, prefer chat_messages",
+    "created_at": "2026-04-03T12:00:00Z",
+    "chat_messages": [
+      {
+        "uuid": "msg-both-0001",
+        "sender": "human",
+        "text": "Nam libero tempore, cum soluta nobis est eligendi, this is from chat_messages and should win.",
+        "created_at": "2026-04-03T12:00:00Z"
+      }
+    ],
+    "messages": [
+      {
+        "uuid": "msg-both-stale-0001",
+        "sender": "human",
+        "text": "STALE — this came from messages-key and should be ignored when chat_messages is present.",
+        "created_at": "2026-04-03T12:00:00Z"
+      }
+    ]
+  },
+  {
+    "uuid": "ef123456-789a-bcde-f012-3456789abcde",
+    "name": "Edge cases conversation",
+    "created_at": "2026-04-04T13:00:00Z",
+    "chat_messages": [
+      {
+        "uuid": "msg-edge-0001",
+        "sender": "human",
+        "text": "Temporibus autem quibusdam et aut officiis debitis aut rerum, edge case conversation kicks off.",
+        "created_at": "2026-04-04T13:00:00Z"
+      },
+      {
+        "uuid": "msg-edge-0002",
+        "sender": "system",
+        "text": "system messages should be filtered out by role mapping rejection."
+      },
+      {
+        "uuid": "msg-edge-0003",
+        "sender": "assistant",
+        "text": "    "
+      },
+      {
+        "uuid": "msg-edge-0004",
+        "sender": "assistant",
+        "text": "Itaque earum rerum hic tenetur a sapiente delectus ut aut reiciendis, valid assistant reply."
+      }
+    ]
+  }
+]

@@ -1,0 +1,4 @@
+{"role": "human", "content": "Ut enim ad minim veniam, quis nostrud exercitation. Begin nested layout test session.", "uuid": "main-0001", "timestamp": "2026-05-01T09:00:00Z"}
+{"role": "assistant", "content": "Duis aute irure dolor in reprehenderit, this is the assistant reply in the nested main file.", "uuid": "main-0002", "timestamp": "2026-05-01T09:00:30Z"}
+{"role": "human", "content": "Excepteur sint occaecat cupidatat non proident, dispatch a subagent for me please.", "uuid": "main-0003", "timestamp": "2026-05-01T09:01:00Z"}
+{"role": "assistant", "content": "Sunt in culpa qui officia deserunt mollit anim id est laborum, dispatching now.", "uuid": "main-0004", "timestamp": "2026-05-01T09:01:30Z"}

@@ -1,0 +1,4 @@
+{"role": "human", "content": "Lorem ipsum dolor sit amet, consectetur this is the first line which parses fine.", "uuid": "msg-bad-0001"}
+this line is not valid json and should be skipped without aborting the run
+{"role": "assistant", "content": "Sed ut perspiciatis unde omnis iste, the third line continues normally after the bad one.", "uuid": "msg-bad-0002"}
+{"role": "assistant", "content": "Nemo enim ipsam voluptatem quia voluptas sit aspernatur, the fourth line confirms recovery.", "uuid": "msg-bad-0003"}

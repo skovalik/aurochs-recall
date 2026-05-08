@@ -1,0 +1,7 @@
+{"role": "human", "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Can you help me ingest some test fixtures?", "uuid": "msg-0001", "timestamp": "2026-04-15T10:00:00Z"}
+{"role": "assistant", "content": "Sure thing. Lorem ipsum dolor sit amet, here is the plan we will follow for the ingest run.", "uuid": "msg-0002", "timestamp": "2026-04-15T10:00:30Z", "model": "claude-sonnet-test"}
+{"role": "human", "content": "Lorem ipsum: please walk me through the chunking strategy for markdown ingestion.", "uuid": "msg-0003", "timestamp": "2026-04-15T10:01:00Z"}
+{"role": "assistant", "content": [{"type": "text", "text": "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. The chunking is straightforward."}, {"type": "tool_use", "id": "tu_1"}], "uuid": "msg-0004", "timestamp": "2026-04-15T10:01:45Z"}
+{"role": "human", "content": "ok"}
+{"role": "human", "content": "/screenshot"}
+{"role": "assistant", "content": "Excepteur sint occaecat cupidatat non proident, this final message wraps up the example session.", "uuid": "msg-0005", "timestamp": "2026-04-15T10:02:30Z"}
