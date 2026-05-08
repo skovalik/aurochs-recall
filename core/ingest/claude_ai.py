@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 
 from ..types import Drawer
@@ -56,8 +56,18 @@ class ClaudeAiIngestor:
         """
         return path.name.lower() == "conversations.json"
 
-    def extract(self, path: Path) -> Iterator[Drawer]:
-        """Yield drawers parsed from the export file."""
+    def extract(
+        self,
+        path: Path,
+        *,
+        error_sink: Callable[..., None] | None = None,
+    ) -> Iterator[Drawer]:
+        """Yield drawers parsed from the export file.
+
+        Per-conversation / per-message warnings (non-object records,
+        missing uuid, missing message array) are reported via
+        ``error_sink(file_path=..., reason=...)`` if provided.
+        """
         try:
             text = read_text_with_fallback(path, primary="utf-8", fallback="latin-1")
         except OSError as e:
@@ -82,8 +92,13 @@ class ClaudeAiIngestor:
                 logger.warning(
                     "claude_ai: skipping non-object conversation in %s", path
                 )
+                if error_sink is not None:
+                    error_sink(
+                        file_path=path,
+                        reason="claude_ai: non-object conversation",
+                    )
                 continue
-            yield from self._extract_conversation(conv, path, mtime)
+            yield from self._extract_conversation(conv, path, mtime, error_sink)
 
     # ----- Per-conversation -----------------------------------------------
 
@@ -92,6 +107,7 @@ class ClaudeAiIngestor:
         conv: dict,
         path: Path,
         fallback_ts: int,
+        error_sink: Callable[..., None] | None = None,
     ) -> Iterable[Drawer]:
         """Yield drawers from a single conversation object."""
         conv_uuid = conv.get("uuid") or conv.get("id")
@@ -99,6 +115,11 @@ class ClaudeAiIngestor:
             logger.warning(
                 "claude_ai: skipping conversation without uuid in %s", path
             )
+            if error_sink is not None:
+                error_sink(
+                    file_path=path,
+                    reason="claude_ai: conversation without uuid",
+                )
             return
 
         # Some exports use chat_messages, some use messages, some have both.
@@ -111,6 +132,14 @@ class ClaudeAiIngestor:
             logger.warning(
                 "claude_ai: conversation %s has no message array", conv_uuid
             )
+            if error_sink is not None:
+                error_sink(
+                    file_path=path,
+                    reason=(
+                        f"claude_ai: conversation {conv_uuid} has "
+                        "no message array"
+                    ),
+                )
             return
 
         prev_drawer_uid: str | None = None
@@ -123,6 +152,14 @@ class ClaudeAiIngestor:
                     conv_uuid,
                     array_idx,
                 )
+                if error_sink is not None:
+                    error_sink(
+                        file_path=path,
+                        reason=(
+                            f"claude_ai: non-object message in "
+                            f"conversation {conv_uuid} index {array_idx}"
+                        ),
+                    )
                 continue
             drawer = self._message_to_drawer(
                 msg=msg,

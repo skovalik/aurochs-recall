@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from ..types import Drawer
@@ -84,8 +84,19 @@ class ClaudeCodeIngestor:
             return True
         return False
 
-    def extract(self, path: Path) -> Iterator[Drawer]:
-        """Yield drawers parsed from a single jsonl file."""
+    def extract(
+        self,
+        path: Path,
+        *,
+        error_sink: Callable[..., None] | None = None,
+    ) -> Iterator[Drawer]:
+        """Yield drawers parsed from a single jsonl file.
+
+        Per-line warnings (bad JSONL, non-object records) are reported
+        via ``error_sink(file_path=..., reason=...)`` if provided. The
+        sink is called once per malformed line. Without a sink, the
+        ingestor still logs to ``logger.warning`` and skips the line.
+        """
         session_uuid = self._extract_session_uuid(path)
         if session_uuid is None:
             raise IngestError(
@@ -119,12 +130,22 @@ class ClaudeCodeIngestor:
                     lineno,
                     e,
                 )
+                if error_sink is not None:
+                    error_sink(
+                        file_path=path,
+                        reason=f"bad jsonl at line {lineno}: {e}",
+                    )
                 continue
 
             if not isinstance(rec, dict):
                 logger.warning(
                     "claude_code: non-object jsonl at %s:%d", path, lineno
                 )
+                if error_sink is not None:
+                    error_sink(
+                        file_path=path,
+                        reason=f"non-object jsonl at line {lineno}",
+                    )
                 continue
 
             drawer = self._record_to_drawer(

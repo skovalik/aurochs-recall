@@ -5,6 +5,20 @@ holds a ``WriteLock`` for the entire run, batches inserts in transactions
 of 1000, and dedupes via the ``content_hash + source + source_id`` UNIQUE
 constraint.
 
+Ingest-error reporting
+----------------------
+The schema's ``ingest_errors`` table records per-file failures (corrupt
+JSON, schema mismatch, OS read errors) with a ``fix_hint``. The indexer
+writes rows there from two paths:
+
+1. File-level exceptions in the ``run_index`` orchestrator (when
+   ``ingestor.extract`` raises).
+2. Per-line / per-record warnings the ingestor reports via the
+   ``error_sink`` callback (bad JSON line, non-object record, etc.).
+
+Both paths route through ``_record_ingest_error`` below so the
+table format and timestamp source are consistent.
+
 Multiprocessing model
 ---------------------
 Workers receive ``(file_path, db_path: str)`` tuples — NEVER live connection
@@ -275,6 +289,95 @@ def _record_index_state(
     )
 
 
+def _record_ingest_error(
+    conn: sqlite3.Connection,
+    *,
+    source: str,
+    source_path: str | None,
+    reason: str,
+    fix_hint: str | None = None,
+) -> None:
+    """Insert a row into ``ingest_errors``.
+
+    Schema (from 0001_initial.sql)::
+
+        CREATE TABLE ingest_errors (
+          id INTEGER PRIMARY KEY,
+          source TEXT NOT NULL,
+          source_path TEXT,
+          reason TEXT NOT NULL,
+          fix_hint TEXT,
+          occurred_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0
+        );
+
+    Errors are append-only; ``recall errors`` reads them back and
+    formats the latest N for the user. A best-effort write — if the
+    table doesn't exist on a pre-baseline DB we swallow the
+    OperationalError so the indexer keeps running.
+    """
+    try:
+        conn.execute(
+            "INSERT INTO ingest_errors (source, source_path, reason, fix_hint, "
+            "occurred_at, retry_count) VALUES (?, ?, ?, ?, ?, 0)",
+            (source, source_path, reason, fix_hint, _now()),
+        )
+    except sqlite3.OperationalError:
+        # Pre-baseline DB without the ingest_errors table: don't crash.
+        pass
+
+
+def _suggest_fix_hint(reason: str) -> str | None:
+    """Heuristic fix-hint generator from a raw exception/warning string.
+
+    Maps common failure patterns to actionable hints. Returns None when
+    we don't have a useful suggestion — better to show no hint than a
+    misleading one.
+    """
+    lower = reason.lower()
+    if "bad jsonl" in lower or "jsondecodeerror" in lower:
+        return (
+            "One or more JSONL lines are malformed. Open the file at the "
+            "reported line number and check for truncation or stray bytes."
+        )
+    if "non-object jsonl" in lower or "non-object message" in lower or "non-object conversation" in lower:
+        return (
+            "Record is not a JSON object. The export may be from a different "
+            "schema version; rerun the export or skip the offending record."
+        )
+    if "no message array" in lower:
+        return (
+            "Conversation has neither 'chat_messages' nor 'messages'. The "
+            "export may be partial; re-export from claude.ai."
+        )
+    if "without uuid" in lower:
+        return (
+            "Conversation lacks a uuid/id. Likely an interrupted export — "
+            "re-export the data."
+        )
+    if "invalid json" in lower:
+        return (
+            "Top-level JSON is invalid. The file may be truncated; re-export "
+            "or trim trailing partial-write bytes."
+        )
+    if "cannot determine session uuid" in lower:
+        return (
+            "JSONL filename and parent directory are not UUIDs. Move the file "
+            "into a directory whose name is a session UUID, or rename the file."
+        )
+    if "failed to read" in lower or "permissionerror" in lower:
+        return (
+            "Filesystem refused the read. Check file permissions and that "
+            "the path is accessible from this user."
+        )
+    if "expected top-level json array" in lower:
+        return (
+            "claude_ai exports must be a top-level JSON array. The file may "
+            "be a single conversation; wrap it in [] or re-export."
+        )
+    return None
+
+
 def _bulk_insert_drawers(conn: sqlite3.Connection, drawers: Iterable[Drawer]) -> int:
     """Insert drawers in batches of ``_BATCH_SIZE``, deduping silently.
 
@@ -423,6 +526,28 @@ def _walk_source_files(root: Path, ingestor) -> Iterator[Path]:
             yield path
 
 
+def _extract_with_sink(ingestor, file_path: Path, sink) -> Iterator[Drawer]:
+    """Call ``ingestor.extract``; pass the error_sink kwarg if supported.
+
+    Older ingestors only define ``extract(self, path)``. Newer ones
+    accept ``extract(self, path, *, error_sink=None)`` and report
+    per-line warnings via the callback. We dispatch the right shape
+    by introspecting the call signature.
+    """
+    import inspect
+
+    try:
+        sig = inspect.signature(ingestor.extract)
+    except (TypeError, ValueError):
+        sig = None
+
+    accepts_sink = sig is not None and "error_sink" in sig.parameters
+    if accepts_sink:
+        yield from ingestor.extract(file_path, error_sink=sink)
+    else:
+        yield from ingestor.extract(file_path)
+
+
 def run_index(
     *,
     config_path: Path | str | None = None,
@@ -487,6 +612,19 @@ def run_index(
                 added_for_source = 0
                 files_for_source = 0
                 files_skipped = 0
+                # Per-source error sink: ingestors call this on per-line
+                # warnings (bad JSONL, non-object records, etc.). We
+                # close over `source.name` so the sink is bound to this
+                # iteration without leaking into the next source.
+                def _sink(*, file_path: Path, reason: str, source_name: str = source.name) -> None:
+                    _record_ingest_error(
+                        conn,
+                        source=source_name,
+                        source_path=str(file_path),
+                        reason=reason,
+                        fix_hint=_suggest_fix_hint(reason),
+                    )
+
                 for file_path in _walk_source_files(root, ingestor):
                     if quick and not _file_needs_index(
                         conn, source.name, file_path
@@ -495,10 +633,18 @@ def run_index(
                         continue
                     files_for_source += 1
                     try:
-                        drawers = list(ingestor.extract(file_path))
+                        drawers = list(_extract_with_sink(ingestor, file_path, _sink))
                     except Exception as e:  # ingest-level failure
+                        reason = f"{type(e).__name__}: {e}"
                         print(
                             f"  ! {source.name}: skipped {file_path} ({e})"
+                        )
+                        _record_ingest_error(
+                            conn,
+                            source=source.name,
+                            source_path=str(file_path),
+                            reason=reason,
+                            fix_hint=_suggest_fix_hint(reason),
                         )
                         continue
                     inserted = _bulk_insert_drawers(conn, drawers)
