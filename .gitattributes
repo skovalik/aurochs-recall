@@ -1,0 +1,68 @@
+# =============================================================================
+# Line endings: enforce LF everywhere (Windows / macOS / Linux all work with LF;
+# CRLF in the repo breaks pre-commit hooks and PII scanner regexes).
+# =============================================================================
+
+* text=auto eol=lf
+
+# Source code
+*.py        text eol=lf
+*.pyi       text eol=lf
+*.sql       text eol=lf
+*.toml      text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.cfg       text eol=lf
+*.ini       text eol=lf
+
+# Shell / scripts
+*.sh        text eol=lf
+*.bash      text eol=lf
+*.ps1       text eol=lf
+.githooks/* text eol=lf
+
+# Web (in case docs ever ship custom HTML/CSS)
+*.html      text eol=lf
+*.css       text eol=lf
+*.js        text eol=lf
+
+# -----------------------------------------------------------------------------
+# Treat the local PII rules file as binary even if accidentally tracked.
+# This prevents diff/blame leakage of the personal pattern file when somebody
+# slips and `git add .pii-rules.local`s it before realizing.
+# -----------------------------------------------------------------------------
+.pii-rules.local binary
+
+# -----------------------------------------------------------------------------
+# Generated docs site — don't diff
+# -----------------------------------------------------------------------------
+site/** binary
+
+# -----------------------------------------------------------------------------
+# Binary file types — explicit so git doesn't try to "fix" them
+# -----------------------------------------------------------------------------
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.svg       text eol=lf
+*.pdf       binary
+*.zip       binary
+*.tar       binary
+*.gz        binary
+*.tgz       binary
+*.zst       binary
+*.whl       binary
+*.db        binary
+
+# -----------------------------------------------------------------------------
+# linguist hints (so GitHub's language stats don't mislabel the repo)
+# -----------------------------------------------------------------------------
+docs/**         linguist-documentation
+bench/**        linguist-documentation
+tests/**        linguist-vendored=false
+core/migrations/versions/*.sql linguist-language=SQL

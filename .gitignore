@@ -1,0 +1,115 @@
+# =============================================================================
+# aurochs-recall — .gitignore
+# =============================================================================
+# Anything that contains user data, secrets, or local environment state.
+# If you're not sure whether something belongs in commit history, default to
+# excluding it.
+
+# -----------------------------------------------------------------------------
+# Local databases (recall.db, journals, WAL)
+# -----------------------------------------------------------------------------
+recall.db
+recall.db-journal
+recall.db-shm
+recall.db-wal
+recall.db.*
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Lockfiles produced by the writer / migration runner
+recall.db.write.lock
+recall.db.migrate.lock
+*.lock
+
+# -----------------------------------------------------------------------------
+# Vector stores / embedding caches
+# -----------------------------------------------------------------------------
+chroma/
+.chroma/
+embeddings_cache/
+.embeddings_cache/
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Build artifacts
+build/
+dist/
+*.whl
+*.tar.gz
+pip-wheel-metadata/
+
+# Virtual envs
+.venv/
+venv/
+env/
+.python-version
+
+# -----------------------------------------------------------------------------
+# Editors / IDE
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/settings.json
+# Keep .vscode/launch.json shared so debug configs travel with the repo
+*.swp
+*.swo
+*~
+
+# -----------------------------------------------------------------------------
+# Secrets and local-only config
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.pii-rules.local
+.secrets/
+secrets/
+
+# -----------------------------------------------------------------------------
+# Personal corpora (sibling dirs that contain real user data)
+# -----------------------------------------------------------------------------
+personal/
+recall-personal/
+*-personal/
+
+# -----------------------------------------------------------------------------
+# OS-level junk
+# -----------------------------------------------------------------------------
+.DS_Store
+__MACOSX/
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# Node (only if mkdocs plugins ever require it)
+# -----------------------------------------------------------------------------
+node_modules/
+.npm/
+
+# -----------------------------------------------------------------------------
+# mkdocs build output
+# -----------------------------------------------------------------------------
+site/
+
+# -----------------------------------------------------------------------------
+# Bench output (large eval logs / generated reports)
+# -----------------------------------------------------------------------------
+bench/results/
+bench/cache/
