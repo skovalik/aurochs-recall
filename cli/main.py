@@ -47,6 +47,28 @@ EPILOG = (
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse argv and dispatch. Returns the process exit code."""
+    # B1 fix: Windows console defaults to cp1252, which crashes on any
+    # non-cp1252 character (→, ✓, —, em-dash, etc.) coming from search
+    # snippets, unicode entity names, or simply ascii-art arrows in
+    # diagnostic output. Reconfigure stdout/stderr to UTF-8 with a
+    # replacement fallback before any output happens. errors="replace"
+    # means a truly unencodable byte renders as `?` instead of crashing
+    # the process — strictly better than the cp1252 crash for a CLI.
+    if sys.platform == "win32":
+        for stream_name in ("stdout", "stderr"):
+            stream = getattr(sys, stream_name, None)
+            reconfigure = getattr(stream, "reconfigure", None)
+            if callable(reconfigure):
+                try:
+                    reconfigure(encoding="utf-8", errors="replace")
+                except (AttributeError, ValueError, OSError):
+                    # Some test harnesses replace stdout with a
+                    # non-text buffer (e.g. capsys uses an io.TextIOWrapper
+                    # that may not support reconfigure on every Python
+                    # build). Failing silently is correct: the user was
+                    # already not on a real Windows console.
+                    pass
+
     if argv is None:
         argv = sys.argv[1:]
     argv = list(argv)

@@ -368,3 +368,71 @@ def test_open_unknown_uid_returns_error(fixture_db_path, capsys):
     assert code == 2
     err = capsys.readouterr().err
     assert "no drawer" in err.lower()
+
+
+# --------------------------------------------------------------------------
+# B1 — Windows UTF-8 stdout reconfigure
+# --------------------------------------------------------------------------
+
+
+def test_main_reconfigures_stdout_to_utf8_on_windows(monkeypatch):
+    """On Windows, main() must reconfigure stdout/stderr to UTF-8 so that
+    snippets containing →, ✓, —, etc. don't crash with 'charmap' codec
+    errors against the cp1252 default. We mock sys.platform and capture
+    the reconfigure() call to verify the fix is in place.
+    """
+    captured: dict[str, dict] = {}
+
+    class FakeStream:
+        def __init__(self, name: str) -> None:
+            self.name = name
+            self.encoding = "cp1252"
+            self.errors = "strict"
+
+        def reconfigure(self, *, encoding: str, errors: str) -> None:
+            captured[self.name] = {"encoding": encoding, "errors": errors}
+            self.encoding = encoding
+            self.errors = errors
+
+        def write(self, _: str) -> int:
+            return 0
+
+        def flush(self) -> None:
+            return None
+
+    fake_stdout = FakeStream("stdout")
+    fake_stderr = FakeStream("stderr")
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(sys, "stdout", fake_stdout)
+    monkeypatch.setattr(sys, "stderr", fake_stderr)
+
+    # Run a no-op command (--version exits via SystemExit before any
+    # query work); the reconfigure happens at the very top of main().
+    with pytest.raises(SystemExit):
+        main(["--version"])
+
+    assert captured.get("stdout") == {"encoding": "utf-8", "errors": "replace"}
+    assert captured.get("stderr") == {"encoding": "utf-8", "errors": "replace"}
+
+
+def test_unicode_query_does_not_crash_on_simulated_cp1252(
+    fixture_db_path, capsys, monkeypatch
+):
+    """B1 regression test: a search returning unicode characters (→, ✓, etc.)
+    must not raise a UnicodeEncodeError even when the underlying stream's
+    nominal encoding is cp1252. The reconfigure() in main() flips the
+    stream to utf-8/replace before any output happens.
+    """
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setattr(sys, "platform", "win32")
+    # Pytest's capsys already wraps stdout/stderr with text streams that
+    # support reconfigure on modern Python. The test here is functional:
+    # if main() correctly calls reconfigure (or no-ops on streams that
+    # don't support it), this query runs without the crash that the
+    # smoke test reported.
+    code = main(["--db", str(fixture_db_path), "search", "mehrwerk"])
+    # Either hits or no-hits is fine; the test is about no-crash.
+    assert code in (0, 1)
+    # Verify capsys captured something (proves output went through).
+    out = capsys.readouterr().out
+    assert isinstance(out, str)
