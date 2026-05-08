@@ -1,0 +1,114 @@
+# =============================================================================
+# aurochs-recall — release workflow (manual dispatch)
+#
+# This workflow does NOT auto-publish on tag push. It is `workflow_dispatch`
+# only; you run it explicitly from the Actions tab when you're ready to cut a
+# release. That deliberate friction exists because:
+#   1. PyPI publication is irreversible. Mistakes are forever.
+#   2. The pre-commit hooks operate on developer machines. CI sees only what
+#      was pushed; manual dispatch forces a human "yes, publish this exact ref."
+#   3. T0 doesn't include trusted-publisher / OIDC setup; tokens live in
+#      repository secrets and rotation is manual.
+#
+# Required secrets:
+#   PYPI_API_TOKEN   PyPI token scoped to the `aurochs-recall` project.
+#                    Set under Settings -> Secrets -> Actions.
+#
+# TODO: SHA-pin actions, switch to PyPI trusted publisher / OIDC for v0.2.
+# =============================================================================
+
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to release (tag, branch, or SHA)"
+        required: true
+        default: "main"
+      target:
+        description: "PyPI target"
+        required: true
+        type: choice
+        options:
+          - testpypi
+          - pypi
+        default: testpypi
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout ${{ inputs.ref }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install build
+        run: |
+          python -m pip install --upgrade pip
+          pip install build hatchling
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Inspect artifacts
+        run: ls -la dist/
+
+      - name: Read version from pyproject
+        id: version
+        run: |
+          python -c "
+          import tomllib, pathlib
+          v = tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version']
+          print(f'version={v}')
+          " >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to ${{ inputs.target }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target }}
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish (testpypi)
+        if: inputs.target == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TESTPYPI_API_TOKEN }}
+          skip-existing: true
+
+      - name: Publish (pypi)
+        if: inputs.target == 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: false
