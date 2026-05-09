@@ -1,0 +1,50 @@
+{"anchor": "cipher-validator-rev-122", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0003-msg-000:f21c253d7d07", "query": "cipher-validator-rev-122"}
+{"anchor": "borealis-scheduler-rev-183", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0055-msg-000:6f918e6486f1", "query": "borealis-scheduler-rev-183"}
+{"anchor": "quasar-validator-rev-66", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0062-msg-000:1e1532c3e1f6", "query": "quasar-validator-rev-66"}
+{"anchor": "tundra-validator-rev-3", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0065-msg-000:84b792ec410a", "query": "tundra-validator-rev-3 pipeline"}
+{"anchor": "quasar-pipeline-rev-95", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0082-msg-000:261407302218", "query": "quasar-pipeline-rev-95"}
+{"anchor": "rivet-pipeline-rev-49", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0022-msg-000:82597bf69780", "query": "rivet-pipeline-rev-49 scheduler"}
+{"anchor": "sentinel-pipeline-rev-88", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0099-msg-000:2134ebb5c84f", "query": "sentinel-pipeline-rev-88"}
+{"anchor": "obsidian-schema-rev-157", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0087-msg-000:fa46fc55e5ac", "query": "obsidian-schema-rev-157 migration"}
+{"anchor": "ember-schema-rev-41", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0041-msg-000:9697b0732e91", "query": "ember-schema-rev-41"}
+{"anchor": "kestrel-retriever-rev-73", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0028-msg-000:c2a2f8ed8321", "query": "kestrel-retriever-rev-73"}
+{"anchor": "sentinel-pipeline-rev-133", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0017-msg-000:850d6194f138", "query": "sentinel-pipeline-rev-133"}
+{"anchor": "cipher-retriever-rev-9", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0078-msg-000:396fe6a42310", "query": "cipher-retriever-rev-9"}
+{"anchor": "gilded-scheduler-rev-39", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0010-msg-000:609bf4b57def", "query": "gilded-scheduler-rev-39"}
+{"anchor": "atlas-retriever-rev-138", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0021-msg-000:0356df9f621c", "query": "atlas-retriever-rev-138"}
+{"anchor": "sentinel-schema-rev-142", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0080-msg-000:61b0f6fa1201", "query": "sentinel-schema-rev-142"}
+{"anchor": "borealis-schema-rev-91", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0064-msg-000:df38d8413d40", "query": "borealis-schema-rev-91 validator"}
+{"anchor": "kestrel-pipeline-rev-148", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0007-msg-000:4e177d278eb6", "query": "kestrel-pipeline-rev-148"}
+{"anchor": "obsidian-retriever-rev-94", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0054-msg-000:b1cf0bacb8ef", "query": "obsidian-retriever-rev-94"}
+{"anchor": "kestrel-schema-rev-122", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0060-msg-000:1c293ebd156e", "query": "kestrel-schema-rev-122"}
+{"anchor": "lattice-scheduler-rev-131", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0077-msg-000:e1b2ecbf8107", "query": "lattice-scheduler-rev-131 scheduler"}
+{"anchor": "cipher-validator-rev-97", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0031-msg-000:731e31c01e77", "query": "cipher-validator-rev-97"}
+{"anchor": "rivet-validator-rev-142", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0006-msg-000:a79bc865793f", "query": "rivet-validator-rev-142"}
+{"anchor": "cipher-scheduler-rev-157", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0042-msg-000:3e6ae68f90b0", "query": "cipher-scheduler-rev-157 retriever"}
+{"anchor": "tundra-validator-rev-135", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0009-msg-000:22171ec6bdfe", "query": "tundra-validator-rev-135"}
+{"anchor": "rivet-scheduler-rev-139", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0029-msg-000:4113732878e5", "query": "rivet-scheduler-rev-139"}
+{"anchor": "junction-retriever-rev-96", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0093-msg-000:4b1c4784dbe5", "query": "junction-retriever-rev-96 retriever"}
+{"anchor": "ember-schema-rev-39", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0002-msg-000:af20b2287a20", "query": "ember-schema-rev-39 retriever"}
+{"anchor": "quasar-retriever-rev-78", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0000-msg-000:32d45333783f", "query": "quasar-retriever-rev-78"}
+{"anchor": "rivet-schema-rev-116", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0018-msg-000:77d88e5f94d7", "query": "rivet-schema-rev-116"}
+{"anchor": "kestrel-scheduler-rev-13", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0011-msg-000:6dd26bbb3421", "query": "kestrel-scheduler-rev-13"}
+{"anchor": "borealis-pipeline-rev-182", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0043-msg-000:65bd3d00a15f", "query": "borealis-pipeline-rev-182 scheduler"}
+{"anchor": "sentinel-schema-rev-76", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0026-msg-000:81f803ff8da9", "query": "sentinel-schema-rev-76"}
+{"anchor": "ionic-retriever-rev-77", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0091-msg-000:835e77f69f4d", "query": "ionic-retriever-rev-77 validator"}
+{"anchor": "rivet-schema-rev-88", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0074-msg-000:c1c41f02a278", "query": "rivet-schema-rev-88"}
+{"anchor": "monolith-validator-rev-149", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0083-msg-000:a517ce0bbd16", "query": "monolith-validator-rev-149 without"}
+{"anchor": "cipher-schema-rev-27", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0061-msg-000:71ffb2526ccb", "query": "cipher-schema-rev-27 schema"}
+{"anchor": "horizon-validator-rev-81", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0016-msg-000:774c4a902cc4", "query": "horizon-validator-rev-81"}
+{"anchor": "ember-scheduler-rev-10", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0070-msg-000:dc8f2055e65b", "query": "ember-scheduler-rev-10 scheduler"}
+{"anchor": "horizon-schema-rev-50", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0095-msg-000:775708cac263", "query": "horizon-schema-rev-50 migration"}
+{"anchor": "atlas-schema-rev-167", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0076-msg-000:ea438cab5dc5", "query": "atlas-schema-rev-167"}
+{"anchor": "flint-retriever-rev-158", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0084-msg-000:f76737ea0c50", "query": "flint-retriever-rev-158"}
+{"anchor": "delta-scheduler-rev-138", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0049-msg-000:014e9decfd2f", "query": "delta-scheduler-rev-138 schema"}
+{"anchor": "quasar-validator-rev-195", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0027-msg-000:9b855363d8cc", "query": "quasar-validator-rev-195"}
+{"anchor": "junction-scheduler-rev-78", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0048-msg-000:af7d1178a0a7", "query": "junction-scheduler-rev-78"}
+{"anchor": "borealis-scheduler-rev-13", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0004-msg-000:bbce7b94984e", "query": "borealis-scheduler-rev-13"}
+{"anchor": "kestrel-retriever-rev-83", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0032-msg-000:50f99929898c", "query": "kestrel-retriever-rev-83"}
+{"anchor": "obsidian-validator-rev-15", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0066-msg-000:c6edfe48fa85", "query": "obsidian-validator-rev-15 migration"}
+{"anchor": "cipher-pipeline-rev-183", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0046-msg-000:b7ac3b7c0b92", "query": "cipher-pipeline-rev-183"}
+{"anchor": "sentinel-validator-rev-110", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0069-msg-000:53f0551cbedc", "query": "sentinel-validator-rev-110 schema"}
+{"anchor": "sentinel-schema-rev-26", "expected_drawer_uid": "synthetic_chat:synthetic-thread-0086-msg-000:70c6a3df43a3", "query": "sentinel-schema-rev-26"}

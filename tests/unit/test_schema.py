@@ -59,8 +59,12 @@ def test_schema_idempotent(tmp_path: Path) -> None:
         rows = conn.execute(
             "SELECT version FROM schema_version WHERE status='applied'"
         ).fetchall()
-        # OR IGNORE on re-apply means we still have exactly one row
-        assert len(rows) == 1
+        # apply_schema is cumulative (v1 + v2 + ...), and ``OR IGNORE`` on
+        # re-apply keeps exactly one row per applied version. Total row
+        # count therefore equals the current version.
+        assert len(rows) == CURRENT_SCHEMA_VERSION
+        applied_versions = sorted(int(r["version"]) for r in rows)
+        assert applied_versions == list(range(1, CURRENT_SCHEMA_VERSION + 1))
     finally:
         conn.close()
 

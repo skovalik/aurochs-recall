@@ -15,7 +15,11 @@ from pathlib import Path
 
 # Current schema version embedded in the spine. Future migrations add files
 # named ``000N_description.sql`` and bump this constant.
-CURRENT_SCHEMA_VERSION: int = 1
+#
+# v1 (0001_initial.sql) — drawer_meta + drawers_fts + entities + relationships +
+#                          predicates + index_state + ingest_errors + schema_version
+# v2 (0002_t1_extraction.sql) — extract_pending + extraction_runs (T1 BYOK)
+CURRENT_SCHEMA_VERSION: int = 2
 
 _MIGRATIONS_DIR: Path = Path(__file__).parent / "migrations"
 
@@ -39,25 +43,30 @@ def apply_schema(
     version: int = CURRENT_SCHEMA_VERSION,
     description: str | None = None,
 ) -> None:
-    """Apply the SQL DDL for a given schema version, idempotently.
+    """Apply DDL up to and including ``version``, idempotently.
 
-    All statements use ``CREATE TABLE IF NOT EXISTS`` / ``INSERT OR IGNORE``
-    so re-running this on an already-initialized database is a no-op. After
-    the DDL runs, a row is recorded in ``schema_version`` (also
-    ``OR IGNORE`` so re-application is silent).
+    Cumulative: applies every migration file in order from v1 through
+    ``version``. All statements use ``CREATE TABLE IF NOT EXISTS`` /
+    ``INSERT OR IGNORE`` so re-running this on an already-initialized
+    database is a no-op. After each version's DDL runs, a row is
+    recorded in ``schema_version`` (``OR IGNORE`` so re-application is
+    silent).
+
+    This is the test-helper / fresh-install entry point. Production
+    upgrades go through ``core.migrations.runner.run_migrations`` which
+    enforces single-writer locking and partial-state detection.
 
     Parameters
     ----------
     conn:
         Open sqlite3 Connection (preferably one from ``core.db.connect``).
     version:
-        Schema version to apply. Defaults to ``CURRENT_SCHEMA_VERSION``.
+        Highest schema version to apply. Defaults to ``CURRENT_SCHEMA_VERSION``.
+        All earlier versions are applied first.
     description:
         Optional human-readable description recorded in the
-        ``schema_version`` row.
+        ``schema_version`` row for the highest version applied.
     """
-    sql_text = schema_path(version).read_text(encoding="utf-8")
-
     # NOTE: ``executescript`` issues its own COMMIT before running and after
     # finishing, so we cannot wrap it in our own BEGIN/COMMIT — sqlite3 will
     # raise "cannot commit - no transaction is active" on the explicit
@@ -65,12 +74,17 @@ def apply_schema(
     # sqlite itself: any error mid-script raises and leaves the database
     # in a consistent state because each CREATE / INSERT is its own
     # transaction at the sqlite level.
-    conn.executescript(sql_text)
-    conn.execute(
-        "INSERT OR IGNORE INTO schema_version "
-        "(version, applied_at, description, status) VALUES (?, ?, ?, 'applied')",
-        (version, int(time.time()), description or f"baseline v{version}"),
-    )
+    for v in range(1, version + 1):
+        sql_text = schema_path(v).read_text(encoding="utf-8")
+        conn.executescript(sql_text)
+        # The schema_version table is created by v1; safe to insert here for
+        # every version since v1 is always applied first when version >= 1.
+        desc = description if v == version else f"baseline v{v}"
+        conn.execute(
+            "INSERT OR IGNORE INTO schema_version "
+            "(version, applied_at, description, status) VALUES (?, ?, ?, 'applied')",
+            (v, int(time.time()), desc or f"baseline v{v}"),
+        )
 
 
 def current_schema_version(conn: sqlite3.Connection) -> int:

@@ -131,6 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_verify(sub)
     _add_types(sub)
     _add_graph(sub)
+    _add_forget(sub)
 
     return p
 
@@ -144,7 +145,18 @@ def _version_string() -> str:
 
 
 _SUBCOMMANDS = frozenset(
-    {"init", "index", "search", "status", "errors", "migrate", "verify", "types", "graph"}
+    {
+        "init",
+        "index",
+        "search",
+        "status",
+        "errors",
+        "migrate",
+        "verify",
+        "types",
+        "graph",
+        "forget",
+    }
 )
 
 # Global flags that take a value (advance index by 2). Boolean global flags
@@ -516,43 +528,63 @@ def _open_drawer(db_path: Path, uid_or_prefix: str) -> int:
 
 def _add_status(sub: Any) -> None:
     p = sub.add_parser("status", help="Show DB stats and indexer state.")
+    p.add_argument("--json", action="store_true", help="Machine-readable JSON output.")
     p.set_defaults(_handler=_cmd_status)
 
 
 def _cmd_status(args: argparse.Namespace) -> int:
     db_path = _resolve_db_path(args)
     if not db_path.exists():
-        print(f"recall.db not found at {db_path}. Run `recall init` then `recall index`.")
+        msg = f"recall.db not found at {db_path}. Run `recall init` then `recall index`."
+        if args.json:
+            json.dump(
+                {"ok": False, "db": str(db_path), "error": "db_not_found"},
+                sys.stdout,
+                ensure_ascii=False,
+                indent=2,
+            )
+            sys.stdout.write("\n")
+        else:
+            print(msg)
         return 1
+
+    payload: dict[str, Any] = {
+        "ok": True,
+        "db": str(db_path),
+        "db_size_bytes": db_path.stat().st_size,
+        "schema_version": None,
+        "schema_applied_at": None,
+        "wal_size_pages": None,
+        "drawers_total": 0,
+        "drawers_by_source": {},
+        "last_indexed_at": None,
+        "ingest_errors": 0,
+    }
 
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     try:
-        size_bytes = db_path.stat().st_size
-        print(f"DB:        {db_path}  ({_humanize_bytes(size_bytes)})")
-
         # Schema version
         try:
             sv_row = conn.execute(
                 "SELECT MAX(version) AS v, MAX(applied_at) AS at "
                 "FROM schema_version WHERE status = 'applied'"
             ).fetchone()
-            sv = sv_row["v"] if sv_row else None
-            sv_at = sv_row["at"] if sv_row else None
-            if sv is not None:
-                print(f"Schema:    v{sv}  (applied {_format_drawer_date(sv_at) if sv_at else '?'})")
-            else:
-                print("Schema:    (no applied migrations)")
+            if sv_row and sv_row["v"] is not None:
+                payload["schema_version"] = int(sv_row["v"])
+                payload["schema_applied_at"] = (
+                    int(sv_row["at"]) if sv_row["at"] is not None else None
+                )
         except sqlite3.OperationalError:
-            print("Schema:    (schema_version table missing — run `recall migrate`)")
+            payload["schema_version"] = None
 
-        # WAL pages
+        # WAL pages — surfaces wal_size_pages per plan v5 BLOCKER #4.
+        # PRAGMA wal_checkpoint returns (busy, log, checkpointed); we want
+        # `log`, the WAL frame count, as wal_size_pages.
         try:
             wal_row = conn.execute("PRAGMA wal_checkpoint(PASSIVE)").fetchone()
-            # PRAGMA wal_checkpoint returns (busy, log, checkpointed). We just
-            # surface the log size.
             if wal_row is not None:
-                print(f"WAL pages: {wal_row[1]}")
+                payload["wal_size_pages"] = int(wal_row[1])
         except sqlite3.OperationalError:
             pass
 
@@ -561,12 +593,11 @@ def _cmd_status(args: argparse.Namespace) -> int:
             rows = conn.execute(
                 "SELECT source, COUNT(*) AS n FROM drawer_meta GROUP BY source ORDER BY n DESC"
             ).fetchall()
-            total = sum(r["n"] for r in rows)
-            print(f"Drawers:   {total} total")
-            for r in rows:
-                print(f"  {r['source']:24} {r['n']}")
+            by_source = {r["source"]: int(r["n"]) for r in rows}
+            payload["drawers_by_source"] = by_source
+            payload["drawers_total"] = sum(by_source.values())
         except sqlite3.OperationalError as e:
-            print(f"Drawers:   (drawer_meta unavailable: {e})")
+            payload["drawers_error"] = str(e)
 
         # Last indexed
         try:
@@ -574,20 +605,64 @@ def _cmd_status(args: argparse.Namespace) -> int:
                 "SELECT MAX(last_indexed_mtime) AS at FROM index_state"
             ).fetchone()
             if row and row["at"]:
-                print(f"Last index: {_format_drawer_date(int(row['at']))}")
+                payload["last_indexed_at"] = int(row["at"])
         except sqlite3.OperationalError:
             pass
 
         # Errors count
         try:
             row = conn.execute("SELECT COUNT(*) AS n FROM ingest_errors").fetchone()
-            n = int(row["n"]) if row else 0
-            if n:
-                print(f"Errors:    {n}  (run `recall errors` to see them)")
+            payload["ingest_errors"] = int(row["n"]) if row else 0
         except sqlite3.OperationalError:
             pass
     finally:
         conn.close()
+
+    if args.json:
+        json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
+        sys.stdout.write("\n")
+        return 0
+
+    # Human-readable output.
+    print(f"DB:        {payload['db']}  ({_humanize_bytes(payload['db_size_bytes'])})")
+
+    if payload["schema_version"] is not None:
+        applied = (
+            _format_drawer_date(payload["schema_applied_at"])
+            if payload["schema_applied_at"]
+            else "?"
+        )
+        print(f"Schema:    v{payload['schema_version']}  (applied {applied})")
+    else:
+        try:
+            # Re-test for the difference between "no applied migrations" and
+            # "table missing" so the human output remains as informative as
+            # before. JSON output collapses both into schema_version=None.
+            conn2 = sqlite3.connect(str(db_path))
+            try:
+                conn2.execute("SELECT 1 FROM schema_version LIMIT 1").fetchone()
+                print("Schema:    (no applied migrations)")
+            except sqlite3.OperationalError:
+                print("Schema:    (schema_version table missing — run `recall migrate`)")
+            finally:
+                conn2.close()
+        except sqlite3.OperationalError:
+            print("Schema:    (unavailable)")
+
+    if payload["wal_size_pages"] is not None:
+        print(f"WAL pages: {payload['wal_size_pages']}")
+
+    if "drawers_error" in payload:
+        print(f"Drawers:   (drawer_meta unavailable: {payload['drawers_error']})")
+    else:
+        print(f"Drawers:   {payload['drawers_total']} total")
+        for src, n in payload["drawers_by_source"].items():
+            print(f"  {src:24} {n}")
+
+    if payload["last_indexed_at"]:
+        print(f"Last index: {_format_drawer_date(payload['last_indexed_at'])}")
+    if payload["ingest_errors"]:
+        print(f"Errors:    {payload['ingest_errors']}  (run `recall errors` to see them)")
     return 0
 
 
@@ -907,6 +982,260 @@ def _cmd_graph_entity(args: argparse.Namespace) -> int:
     finally:
         conn.close()
     return 0
+
+
+# ----------------------------------------------------------------------
+# Subcommand: forget
+# ----------------------------------------------------------------------
+
+
+# Soft-delete table contract (see retriever.fts5 for the read side):
+#   - PRIMARY KEY: drawer_uid (TEXT)
+#   - hidden_at: epoch seconds the row was first inserted
+#   - unhidden_at: NULL = currently hidden; integer epoch = restored
+#   - reason: optional human-supplied context
+# Row is preserved across un-hide/re-hide cycles for audit trail.
+_HIDDEN_DRAWERS_DDL = """
+CREATE TABLE IF NOT EXISTS hidden_drawers (
+  drawer_uid TEXT PRIMARY KEY,
+  hidden_at INTEGER NOT NULL,
+  unhidden_at INTEGER,
+  reason TEXT,
+  FOREIGN KEY (drawer_uid) REFERENCES drawer_meta(drawer_uid) ON DELETE CASCADE
+)
+"""
+
+
+class _DrawerNotFoundError(Exception):
+    """Raised by `resolve_drawer_uid_prefix` when no drawer matches the prefix."""
+
+
+class _AmbiguousPrefixError(Exception):
+    """Raised by `resolve_drawer_uid_prefix` when multiple drawer_uids match."""
+
+    def __init__(self, prefix: str, candidates: list[str]) -> None:
+        super().__init__(prefix)
+        self.prefix = prefix
+        self.candidates = candidates
+
+
+def resolve_drawer_uid_prefix(
+    prefix_or_full: str,
+    conn: sqlite3.Connection,
+    *,
+    candidate_limit: int = 5,
+) -> str:
+    """Resolve a prefix (git-short-SHA-style) to a unique full drawer_uid.
+
+    Plan v5 BLOCKER #7: drawer_uid unique-prefix matching. The drawer_uid
+    is structured as ``{source}:{source_id}:{content_hash[:12]}``, so a
+    user-supplied "prefix" usually targets the trailing content_hash
+    portion (e.g. ``abc123de``) rather than the leading source. We
+    therefore match against either an exact full uid OR a substring
+    appearing at the start of the content_hash segment.
+
+    Concretely:
+      - exact match on drawer_uid (LIKE-free fast path)
+      - then ``drawer_uid LIKE :{prefix}%`` to catch the hash-prefix case
+      - then ``drawer_uid LIKE %:{prefix}%`` to catch the case where the
+        user pasted a full-uid prefix that includes the source segment
+    """
+    # Exact match wins immediately.
+    row = conn.execute(
+        "SELECT drawer_uid FROM drawer_meta WHERE drawer_uid = ?",
+        (prefix_or_full,),
+    ).fetchone()
+    if row is not None:
+        return str(row["drawer_uid"]) if isinstance(row, sqlite3.Row) else str(row[0])
+
+    # Match against either {prefix}% (full-uid prefix) or %:{prefix}%
+    # (hash-segment prefix). Cap matches with `candidate_limit + 1` so
+    # we can detect "ambiguous: more than 5 matches" without a COUNT(*).
+    rows = conn.execute(
+        "SELECT drawer_uid FROM drawer_meta "
+        "WHERE drawer_uid LIKE ? OR drawer_uid LIKE ? "
+        "LIMIT ?",
+        (f"{prefix_or_full}%", f"%:{prefix_or_full}%", candidate_limit + 1),
+    ).fetchall()
+    if not rows:
+        raise _DrawerNotFoundError(prefix_or_full)
+    if len(rows) > 1:
+        candidates = [
+            (r["drawer_uid"] if isinstance(r, sqlite3.Row) else r[0]) for r in rows
+        ]
+        raise _AmbiguousPrefixError(prefix_or_full, list(candidates[:candidate_limit]))
+    only = rows[0]
+    return str(only["drawer_uid"]) if isinstance(only, sqlite3.Row) else str(only[0])
+
+
+def _add_forget(sub: Any) -> None:
+    p = sub.add_parser(
+        "forget",
+        help="Soft-delete a drawer (hide from search; row preserved for audit).",
+    )
+    p.add_argument(
+        "drawer_uid",
+        help="Drawer UID (full) or unique prefix (git-short-SHA-style).",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview the resolved drawer + planned hide; do not write.",
+    )
+    p.add_argument(
+        "--reason",
+        help="Optional human-readable reason recorded with the hide.",
+    )
+    p.add_argument("--json", action="store_true", help="Machine-readable JSON output.")
+    p.set_defaults(_handler=_cmd_forget)
+
+
+def _cmd_forget(args: argparse.Namespace) -> int:
+    db_path = _resolve_db_path(args)
+    if not db_path.exists():
+        if args.json:
+            json.dump(
+                {"ok": False, "error": "db_not_found", "db": str(db_path)},
+                sys.stdout,
+                ensure_ascii=False,
+                indent=2,
+            )
+            sys.stdout.write("\n")
+        else:
+            print(f"recall.db not found at {db_path}.", file=sys.stderr)
+        return 1
+
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        try:
+            full_uid = resolve_drawer_uid_prefix(args.drawer_uid, conn)
+        except _DrawerNotFoundError:
+            if args.json:
+                json.dump(
+                    {
+                        "ok": False,
+                        "error": "drawer_not_found",
+                        "input": args.drawer_uid,
+                    },
+                    sys.stdout,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                sys.stdout.write("\n")
+            else:
+                print(
+                    f"recall: no drawer matched {args.drawer_uid!r}.",
+                    file=sys.stderr,
+                )
+            return 2
+        except _AmbiguousPrefixError as e:
+            if args.json:
+                json.dump(
+                    {
+                        "ok": False,
+                        "error": "ambiguous_prefix",
+                        "input": args.drawer_uid,
+                        "candidates": e.candidates,
+                    },
+                    sys.stdout,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                sys.stdout.write("\n")
+            else:
+                print(
+                    f"recall: prefix {args.drawer_uid!r} matches multiple drawers:",
+                    file=sys.stderr,
+                )
+                for cand in e.candidates:
+                    print(f"  {cand}", file=sys.stderr)
+                print(
+                    "  (showing up to 5 — narrow the prefix to disambiguate.)",
+                    file=sys.stderr,
+                )
+            return 2
+
+        # Pull a small drawer summary for the operator.
+        meta_row = conn.execute(
+            "SELECT source, role, register, created_at, source_path "
+            "FROM drawer_meta WHERE drawer_uid = ?",
+            (full_uid,),
+        ).fetchone()
+
+        if args.dry_run:
+            if args.json:
+                json.dump(
+                    {
+                        "ok": True,
+                        "dry_run": True,
+                        "drawer_uid": full_uid,
+                        "source": meta_row["source"] if meta_row else None,
+                        "role": meta_row["role"] if meta_row else None,
+                        "register": meta_row["register"] if meta_row else None,
+                        "created_at": meta_row["created_at"] if meta_row else None,
+                        "source_path": meta_row["source_path"] if meta_row else None,
+                        "reason": args.reason,
+                    },
+                    sys.stdout,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                sys.stdout.write("\n")
+            else:
+                print("dry-run: would hide the following drawer.")
+                print(f"  drawer_uid: {full_uid}")
+                if meta_row:
+                    print(f"  source:     {meta_row['source']}")
+                    print(f"  role:       {meta_row['role']}")
+                    if meta_row["register"]:
+                        print(f"  register:   {meta_row['register']}")
+                    print(
+                        f"  created:    "
+                        f"{_format_drawer_date(meta_row['created_at'])}"
+                    )
+                    if meta_row["source_path"]:
+                        print(f"  source:     {meta_row['source_path']}")
+                if args.reason:
+                    print(f"  reason:     {args.reason}")
+                print("Re-run without --dry-run to commit.")
+            return 0
+
+        # Real hide: ensure the table exists, then upsert (re-hide if was un-hidden).
+        now = int(datetime.now(tz=timezone.utc).timestamp())
+        conn.execute(_HIDDEN_DRAWERS_DDL)
+        conn.execute(
+            "INSERT INTO hidden_drawers (drawer_uid, hidden_at, unhidden_at, reason) "
+            "VALUES (?, ?, NULL, ?) "
+            "ON CONFLICT(drawer_uid) DO UPDATE SET "
+            "  hidden_at = excluded.hidden_at, "
+            "  unhidden_at = NULL, "
+            "  reason = excluded.reason",
+            (full_uid, now, args.reason),
+        )
+        conn.commit()
+
+        if args.json:
+            json.dump(
+                {
+                    "ok": True,
+                    "dry_run": False,
+                    "drawer_uid": full_uid,
+                    "hidden_at": now,
+                    "reason": args.reason,
+                },
+                sys.stdout,
+                ensure_ascii=False,
+                indent=2,
+            )
+            sys.stdout.write("\n")
+        else:
+            print(f"hidden: {full_uid}")
+            if args.reason:
+                print(f"  reason: {args.reason}")
+        return 0
+    finally:
+        conn.close()
 
 
 # ----------------------------------------------------------------------

@@ -24,9 +24,13 @@ you actually use it.
 - **[Install](install.md)** — `pip install aurochs-recall` and the
   optional extras.
 - **[CLI](cli.md)** — every command, every flag.
+- **[BYOK](byok.md)** — bring your own key for LLM extraction;
+  Anthropic / OpenAI / vLLM / Cloudflare AI Gateway routing.
 - **[Privacy](privacy.md)** — explicit no-telemetry posture.
 - **[Comparison](comparison.md)** — where this sits in the
   memory-tooling category.
+- **[Empirical receipts](empirical-receipts.md)** — build receipts,
+  validation trajectory, and failure-mode taxonomy.
 
 ## What this isn't
 

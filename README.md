@@ -96,6 +96,7 @@ Full docs live under [`docs/`](docs/):
 - [Concepts](docs/concepts.md) — the four memory layers
 - [CLI reference](docs/cli.md)
 - [Sources schema](docs/sources.md)
+- [BYOK](docs/byok.md) — Anthropic / OpenAI / vLLM / Cloudflare AI Gateway
 - [Privacy posture](docs/privacy.md)
 - [Concurrency model](docs/concurrency.md)
 - [Backup & restore](docs/backup-restore.md)
@@ -103,6 +104,7 @@ Full docs live under [`docs/`](docs/):
 - [Failure modes](docs/failure-modes.md)
 - [External contracts](docs/contracts.md) — MCP schema, plugin.json, hook stdin/stdout
 - [Comparison](docs/comparison.md) — where this sits in the memory-tooling category
+- [Empirical receipts](docs/empirical-receipts.md) — build receipts, validation trajectory
 - [FAQ](docs/faq.md)
 
 ## Bench

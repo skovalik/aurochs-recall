@@ -29,7 +29,6 @@ from aurochs_recall.core.schema import (
     CURRENT_SCHEMA_VERSION,
     apply_schema,
     current_schema_version,
-    schema_path,
 )
 
 # Conservative lock timeout — the migration runner shouldn't block forever.
@@ -138,19 +137,41 @@ def _apply_one(
     """
     sql_text = path.read_text(encoding="utf-8")
 
-    conn.execute("BEGIN EXCLUSIVE")
-    try:
-        # For the v1 baseline, the schema_version table doesn't exist yet,
-        # so we run the DDL first. For v2+, we can pre-stamp 'in_progress'.
-        if version == CURRENT_SCHEMA_VERSION and current_schema_version(conn) == 0:
-            # Baseline path: defer to apply_schema which handles the
-            # OR IGNORE INSERT cleanly. Reuse that rather than duplicate.
-            conn.execute("ROLLBACK")  # release the EXCLUSIVE; apply_schema runs its own.
-            apply_schema(conn, version=version, description=description)
-            return
+    # Detect baseline-application: the schema_version table itself doesn't
+    # exist on a virgin DB until v1's DDL creates it. We can't pre-stamp
+    # ``in_progress`` until that table is in place. This is a structural
+    # property of v1, not a property of "version == latest" — so detect
+    # by table absence directly. (Earlier versions of this code keyed on
+    # ``version == CURRENT_SCHEMA_VERSION``, which broke when newer
+    # migrations were added: applying v1 on a virgin DB stopped matching
+    # the baseline branch and tried to INSERT into a not-yet-created
+    # schema_version table.)
+    schema_version_exists = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'"
+    ).fetchone() is not None
 
+    if not schema_version_exists:
+        # Baseline path: defer to apply_schema which executes the DDL
+        # (creating schema_version inside it) and inserts the row via
+        # OR IGNORE. Reuse that rather than duplicate.
+        apply_schema(conn, version=version, description=description)
+        return
+
+    # NOTE on transactions: ``executescript`` issues an implicit COMMIT
+    # before running the script, so we cannot wrap the whole flow in a
+    # single BEGIN EXCLUSIVE/COMMIT pair. Instead we record ``in_progress``
+    # first (auto-committed thanks to the connection's autocommit
+    # isolation_level=None setting), then run the DDL script, then flip
+    # to ``applied``. If the process crashes mid-DDL the schema_version
+    # row stays at ``in_progress`` — which is exactly what the partial-
+    # state detection branch in run_migrations() looks for on next start.
+    try:
+        # OR REPLACE so a previous 'failed' row for the same version is
+        # overwritten cleanly. The PRIMARY KEY on schema_version.version
+        # would otherwise reject the second attempt.
         conn.execute(
-            "INSERT INTO schema_version (version, applied_at, description, status) "
+            "INSERT OR REPLACE INTO schema_version "
+            "(version, applied_at, description, status) "
             "VALUES (?, ?, ?, 'in_progress')",
             (version, int(time.time()), description or path.stem),
         )
@@ -159,10 +180,16 @@ def _apply_one(
             "UPDATE schema_version SET status='applied' WHERE version=?",
             (version,),
         )
-        conn.execute("COMMIT")
     except Exception:
+        # Best-effort: try to flip the row to 'failed' so operators can see
+        # which version partial-applied. If even that fails, leave it at
+        # 'in_progress' — run_migrations() will refuse to proceed and
+        # require manual recovery.
         try:
-            conn.execute("ROLLBACK")
+            conn.execute(
+                "UPDATE schema_version SET status='failed' WHERE version=?",
+                (version,),
+            )
         except sqlite3.OperationalError:
             pass
         raise

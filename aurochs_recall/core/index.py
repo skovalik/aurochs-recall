@@ -114,17 +114,31 @@ class Indexer:
 
     # ----- top-level entry points -----------------------------------------
 
-    def index_drawers(self, drawers: Iterable[Drawer]) -> int:
+    def index_drawers(
+        self,
+        drawers: Iterable[Drawer],
+        *,
+        enqueue_extract: bool = False,
+    ) -> int:
         """Insert a stream of drawers, deduping by (content_hash, source, source_id).
 
         Returns the number of new rows actually inserted (not counting
         existing duplicates). Holds the ``WriteLock`` for the entire call.
+
+        Parameters
+        ----------
+        enqueue_extract:
+            If True, newly-inserted drawers are also enqueued into
+            ``extract_pending`` for later BYOK extraction. Pre-T1
+            databases no-op gracefully.
         """
         added = 0
         with WriteLock(self.db_path, timeout=_WRITE_LOCK_TIMEOUT):
             conn = connect(self.db_path)
             try:
-                added = _bulk_insert_drawers(conn, drawers)
+                added = _bulk_insert_drawers(
+                    conn, drawers, enqueue_extract=enqueue_extract
+                )
             finally:
                 conn.close()
         return added
@@ -378,14 +392,31 @@ def _suggest_fix_hint(reason: str) -> str | None:
     return None
 
 
-def _bulk_insert_drawers(conn: sqlite3.Connection, drawers: Iterable[Drawer]) -> int:
+def _bulk_insert_drawers(
+    conn: sqlite3.Connection,
+    drawers: Iterable[Drawer],
+    *,
+    enqueue_extract: bool = False,
+) -> int:
     """Insert drawers in batches of ``_BATCH_SIZE``, deduping silently.
 
     Returns the number of rows actually inserted. Uses ``INSERT OR IGNORE``
     against the (content_hash, source, source_id) UNIQUE index so re-runs
     don't double-index. The FTS5 virtual table is kept in sync via the
     ``drawer_meta`` rowid binding.
+
+    Parameters
+    ----------
+    enqueue_extract:
+        If True, every newly-inserted drawer (skipping duplicates) is
+        also enqueued into ``extract_pending`` in the same transaction.
+        Pre-T1 databases without ``extract_pending`` no-op gracefully.
+        Default False to keep T0 behavior unchanged.
     """
+    # Lazy import to keep T0-only callers from paying the import cost.
+    if enqueue_extract:
+        from aurochs_recall.core.extraction import enqueue_for_extraction
+
     inserted = 0
     batch: list[Drawer] = []
 
@@ -438,6 +469,14 @@ def _bulk_insert_drawers(conn: sqlite3.Connection, drawers: Iterable[Drawer]) ->
                             "VALUES (?, ?)",
                             (rowid[0], d.content),
                         )
+                        if enqueue_extract:
+                            # Stage for later BYOK extraction. Same
+                            # transaction as the drawer insert so a crash
+                            # between the two is impossible. Pre-T1 DBs
+                            # without extract_pending no-op via the
+                            # OperationalError swallowed inside
+                            # enqueue_for_extraction.
+                            enqueue_for_extraction(conn, d.drawer_uid)
             conn.execute("COMMIT")
         except Exception:
             try:
@@ -631,6 +670,7 @@ def run_index(
     config_path: Path | str | None = None,
     db_path: Path | str | None = None,
     quick: bool = False,
+    enqueue_extract: bool = False,
 ) -> int:
     """Top-level indexer invoked by ``recall index``.
 
@@ -650,6 +690,11 @@ def run_index(
         Incremental mode — skip files whose mtime hasn't changed since
         last index. The default is to walk everything (still cheap because
         the UNIQUE index makes re-inserts no-ops).
+    enqueue_extract:
+        If True, every newly-inserted drawer is staged into
+        ``extract_pending`` so a subsequent ``recall extract`` run can
+        pick it up. Default False — extraction is opt-in because it
+        implies BYOK API costs.
     """
     # Lazy import: keeps test fixtures that touch core.index but never
     # call run_index from paying for the heavier deps.
@@ -725,7 +770,9 @@ def run_index(
                             fix_hint=_suggest_fix_hint(reason),
                         )
                         continue
-                    inserted = _bulk_insert_drawers(conn, drawers)
+                    inserted = _bulk_insert_drawers(
+                        conn, drawers, enqueue_extract=enqueue_extract
+                    )
                     _record_index_state(conn, source.name, file_path, inserted)
                     added_for_source += inserted
                 total_inserted += added_for_source

@@ -36,7 +36,7 @@ def test_help_prints_subcommands(capsys):
     assert exc.value.code == 0
     out = capsys.readouterr().out
     for cmd in ("init", "index", "search", "status", "errors", "migrate", "verify",
-                "types", "graph"):
+                "types", "graph", "forget"):
         assert cmd in out
 
 
