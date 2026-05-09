@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from core.db import connect
-from core.index import Indexer
-from core.migrations.runner import run_migrations
-from core.types import Drawer
+from aurochs_recall.core.db import connect
+from aurochs_recall.core.index import Indexer
+from aurochs_recall.core.migrations.runner import run_migrations
+from aurochs_recall.core.types import Drawer
 
 
 def _setup_db(tmp_path: Path) -> Path:
@@ -105,7 +105,7 @@ class TestIndexDrawers:
 
     def test_batch_boundary(self, tmp_path: Path) -> None:
         """Inserting exactly _BATCH_SIZE drawers must not crash on flush."""
-        from core.index import _BATCH_SIZE  # type: ignore[attr-defined]
+        from aurochs_recall.core.index import _BATCH_SIZE  # type: ignore[attr-defined]
 
         db = _setup_db(tmp_path)
         idx = Indexer(db)

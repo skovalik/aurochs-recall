@@ -44,10 +44,10 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from core.db import connect
-from core.locks import WriteLock
-from core.recovery import verify_or_rebuild
-from core.types import Drawer
+from aurochs_recall.core.db import connect
+from aurochs_recall.core.locks import WriteLock
+from aurochs_recall.core.recovery import verify_or_rebuild
+from aurochs_recall.core.types import Drawer
 
 # Batch size for INSERT transactions. Tuned for "a few seconds of work
 # per commit on commodity hardware" — large enough to amortize fsync,
@@ -220,7 +220,7 @@ def _worker_index_one_file(file_path_str: str, db_path_str: str, source_name: st
 
     # Worker discovers its own ingestor by source name. T0 ships only the
     # markdown ingestor wired through; future ingestors register here.
-    ingestor_module = import_module(f"core.ingest.{source_name}")
+    ingestor_module = import_module(f"aurochs_recall.core.ingest.{source_name}")
     ingestor = ingestor_module.Ingestor()
 
     drawers = list(ingestor.read_drawers(file_path))
@@ -485,9 +485,9 @@ def _now() -> int:
 
 
 _INGESTOR_REGISTRY: dict[str, str] = {
-    "claude_code": "core.ingest.claude_code:ClaudeCodeIngestor",
-    "claude_ai":   "core.ingest.claude_ai:ClaudeAiIngestor",
-    "markdown":    "core.ingest.markdown:MarkdownIngestor",
+    "claude_code": "aurochs_recall.core.ingest.claude_code:ClaudeCodeIngestor",
+    "claude_ai":   "aurochs_recall.core.ingest.claude_ai:ClaudeAiIngestor",
+    "markdown":    "aurochs_recall.core.ingest.markdown:MarkdownIngestor",
     # 'chatgpt' / 'capture' deferred to later patches per plan v5.
 }
 
@@ -653,8 +653,8 @@ def run_index(
     """
     # Lazy import: keeps test fixtures that touch core.index but never
     # call run_index from paying for the heavier deps.
-    from core.migrations.runner import run_migrations
-    from core.sources_config import (
+    from aurochs_recall.core.migrations.runner import run_migrations
+    from aurochs_recall.core.sources_config import (
         SourcesConfig,
         default_database_path,
         load_sources_config,

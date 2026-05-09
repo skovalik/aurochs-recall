@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.ingest.markdown import MarkdownIngestor
+from aurochs_recall.core.ingest.markdown import MarkdownIngestor
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "ingest"
 CORPUS_ROOT = FIXTURES / "markdown_corpus"

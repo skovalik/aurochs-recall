@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.retriever.fts5 import (
+from aurochs_recall.core.retriever.fts5 import (
     DEFAULT_LIMIT,
     MAX_LIMIT,
     FTS5QueryError,
@@ -142,7 +142,7 @@ def test_search_with_drawers_pairs(fixture_conn):
 
 def test_protocol_compatibility(fixture_conn):
     """FTS5Retriever satisfies the runtime-checkable Retriever Protocol."""
-    from core.retriever import Retriever
+    from aurochs_recall.core.retriever import Retriever
 
     r = FTS5Retriever(conn=fixture_conn)
     assert isinstance(r, Retriever)

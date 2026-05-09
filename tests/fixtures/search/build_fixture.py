@@ -23,11 +23,11 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from core.types import compute_content_hash, compute_drawer_uid  # noqa: E402
+from aurochs_recall.core.types import compute_content_hash, compute_drawer_uid  # noqa: E402
 
 
 FIXTURE_PATH = Path(__file__).parent / "recall.db"
-SCHEMA_PATH = REPO_ROOT / "core" / "migrations" / "0001_initial.sql"
+SCHEMA_PATH = REPO_ROOT / "aurochs_recall" / "core" / "migrations" / "0001_initial.sql"
 
 
 # 20 deterministic drawers. (source, source_id, role, content, created_at,

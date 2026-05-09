@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from core.ingest.claude_code import ClaudeCodeIngestor
+from aurochs_recall.core.ingest.claude_code import ClaudeCodeIngestor
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "ingest"
 FLAT_DIR = FIXTURES / "claude_code_flat"
@@ -126,7 +126,7 @@ def test_extract_flat_drops_tool_use_blocks():
 
 def test_extract_bad_line_skips_and_logs(caplog):
     ing = ClaudeCodeIngestor()
-    with caplog.at_level(logging.WARNING, logger="core.ingest.claude_code"):
+    with caplog.at_level(logging.WARNING, logger="aurochs_recall.core.ingest.claude_code"):
         drawers = list(ing.extract(FLAT_BAD))
     # 4 lines in the file: 3 are valid JSON. All 3 should yield drawers.
     assert len(drawers) == 3

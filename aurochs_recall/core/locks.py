@@ -314,7 +314,7 @@ class WriteLock(_PlatformLock):
 
     Usage::
 
-        from core.locks import WriteLock
+        from aurochs_recall.core.locks import WriteLock
 
         with WriteLock(db_path, timeout=30):
             # do writes

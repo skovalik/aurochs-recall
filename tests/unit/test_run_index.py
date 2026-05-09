@@ -12,14 +12,14 @@ from pathlib import Path
 
 import pytest
 
-from core.index import (
+from aurochs_recall.core.index import (
     _path_passes_filters,
     _record_ingest_error,
     _suggest_fix_hint,
     run_index,
 )
-from core.migrations.runner import run_migrations
-from core.sources_config import SourceEntry
+from aurochs_recall.core.migrations.runner import run_migrations
+from aurochs_recall.core.sources_config import SourceEntry
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +290,7 @@ class TestRunIndexIngestErrors:
         rc = run_index(config_path=cfg, db_path=db)
         assert rc == 0
 
-        from cli.main import main as cli_main
+        from aurochs_recall.cli.main import main as cli_main
 
         capsys.readouterr()  # clear
         rc = cli_main(["--db", str(db), "errors"])

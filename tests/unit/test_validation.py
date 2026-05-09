@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from core.validation import (
+from aurochs_recall.core.validation import (
     InvalidInput,
     compute_content_hash,
     normalize_whitespace,

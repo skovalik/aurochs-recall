@@ -26,8 +26,8 @@ import sqlite3
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from core.graph.store import add_entity, link_entity_in_drawer
-from core.types import Drawer
+from aurochs_recall.core.graph.store import add_entity, link_entity_in_drawer
+from aurochs_recall.core.types import Drawer
 
 
 @dataclass(frozen=True, slots=True)

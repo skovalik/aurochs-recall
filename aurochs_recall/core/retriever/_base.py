@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from core.types import Hit
+from aurochs_recall.core.types import Hit
 
 
 @runtime_checkable

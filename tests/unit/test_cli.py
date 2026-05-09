@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from cli.main import build_parser, main
-from core.sources_config import (
+from aurochs_recall.cli.main import build_parser, main
+from aurochs_recall.core.sources_config import (
     SourceEntry,
     detect_candidate_sources,
     discover_config_path,

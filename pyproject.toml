@@ -93,7 +93,7 @@ all = [
 ]
 
 [project.scripts]
-recall = "cli.main:main"
+recall = "aurochs_recall.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/skovalik/aurochs-recall"
@@ -103,12 +103,11 @@ Issues = "https://github.com/skovalik/aurochs-recall/issues"
 Changelog = "https://github.com/skovalik/aurochs-recall/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
-packages = ["cli", "core"]
+packages = ["aurochs_recall"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/cli",
-    "/core",
+    "/aurochs_recall",
     "/docs",
     "/bench",
     "/tests",
@@ -157,7 +156,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["N802", "N806", "N803"]
-"core/migrations/*.py" = ["E402"]
+"aurochs_recall/core/migrations/*.py" = ["E402"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -233,7 +232,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
-source = ["cli", "core"]
+source = ["aurochs_recall"]
 omit = [
     "*/tests/*",
     "*/migrations/versions/*",

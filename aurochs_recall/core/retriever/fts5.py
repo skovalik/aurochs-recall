@@ -27,7 +27,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from core.types import Drawer, Hit
+from aurochs_recall.core.types import Drawer, Hit
 
 
 # Conservative caps so a runaway query can't OOM the process.

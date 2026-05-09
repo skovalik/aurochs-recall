@@ -24,7 +24,7 @@ import sqlite3
 import time
 from typing import Any
 
-from core.types import Entity, Relationship
+from aurochs_recall.core.types import Entity, Relationship
 
 
 def add_entity(

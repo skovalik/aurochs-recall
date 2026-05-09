@@ -16,8 +16,8 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Literal
 
-from core.retriever.fts5 import FTS5Retriever
-from core.types import Drawer, Hit
+from aurochs_recall.core.retriever.fts5 import FTS5Retriever
+from aurochs_recall.core.types import Drawer, Hit
 
 
 # ANSI bold around matched terms. Unicode-safe (no fixed-byte assumptions).

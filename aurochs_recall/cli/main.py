@@ -137,7 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _version_string() -> str:
     try:
-        from core import __version__  # type: ignore
+        from aurochs_recall.core import __version__  # type: ignore
     except Exception:
         return f"{PROG} (unknown version)"
     return f"{PROG} {__version__}"
@@ -208,7 +208,7 @@ def _add_init(sub: Any) -> None:
 
 
 def _cmd_init(args: argparse.Namespace) -> int:
-    from core.sources_config import (
+    from aurochs_recall.core.sources_config import (
         default_config_path,
         default_database_path,
         detect_candidate_sources,
@@ -302,7 +302,7 @@ def _cmd_index(args: argparse.Namespace) -> int:
     # Indexer class. Keeping the import lazy means single-process tests
     # that only touch other modules don't pay the import cost.
     try:
-        from core.index import run_index
+        from aurochs_recall.core.index import run_index
     except ImportError:
         print(
             "recall index: indexer module not yet available in this build.",
@@ -314,7 +314,7 @@ def _cmd_index(args: argparse.Namespace) -> int:
         # Spawn the same command without --bg, detached. Cross-platform
         # daemonization is non-trivial; for T0 we use subprocess.Popen with
         # the platform-appropriate flags.
-        cmd = [sys.executable, "-m", "cli.main", "index"]
+        cmd = [sys.executable, "-m", "aurochs_recall.cli.main", "index"]
         if args.quick:
             cmd.append("--quick")
         if sys.platform == "win32":
@@ -384,8 +384,8 @@ def _cmd_search(args: argparse.Namespace) -> int:
     since = _parse_date(args.since) if args.since else None
     until = _parse_date(args.until, end_of_day=True) if args.until else None
 
-    from core.search import Searcher
-    from core.retriever.fts5 import FTS5QueryError
+    from aurochs_recall.core.search import Searcher
+    from aurochs_recall.core.retriever.fts5 import FTS5QueryError
 
     try:
         with Searcher(db_path=db_path) as s:
@@ -676,7 +676,7 @@ def _add_migrate(sub: Any) -> None:
 def _cmd_migrate(args: argparse.Namespace) -> int:
     db_path = _resolve_db_path(args)
     try:
-        from core.migrations.runner import (  # type: ignore[attr-defined]
+        from aurochs_recall.core.migrations.runner import (  # type: ignore[attr-defined]
             apply_pending,
             list_status,
             baseline_from_existing,
@@ -919,7 +919,7 @@ def _resolve_db_path(args: argparse.Namespace) -> Path:
     if getattr(args, "db", None):
         return Path(args.db).expanduser().resolve()
     try:
-        from core.sources_config import (
+        from aurochs_recall.core.sources_config import (
             default_database_path,
             load_sources_config,
         )
@@ -928,7 +928,7 @@ def _resolve_db_path(args: argparse.Namespace) -> Path:
         cfg = load_sources_config(cfg_path)
         return cfg.database_path
     except FileNotFoundError:
-        from core.sources_config import default_database_path
+        from aurochs_recall.core.sources_config import default_database_path
 
         return default_database_path()
 

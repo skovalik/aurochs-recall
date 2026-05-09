@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from core.db import connect
-from core.schema import CURRENT_SCHEMA_VERSION, apply_schema, current_schema_version
+from aurochs_recall.core.db import connect
+from aurochs_recall.core.schema import CURRENT_SCHEMA_VERSION, apply_schema, current_schema_version
 
 
 def test_apply_schema_creates_all_tables(tmp_path: Path) -> None:

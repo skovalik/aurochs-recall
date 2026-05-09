@@ -10,9 +10,9 @@ import json
 
 import pytest
 
-from cli.main import main
-from core.retriever.fts5 import FTS5Retriever
-from core.search import Searcher
+from aurochs_recall.cli.main import main
+from aurochs_recall.core.retriever.fts5 import FTS5Retriever
+from aurochs_recall.core.search import Searcher
 
 
 # Canned query → expected uid prefixes (12-char content_hash[:12]). Updated

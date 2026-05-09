@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from core.ingest.claude_ai import ClaudeAiIngestor
+from aurochs_recall.core.ingest.claude_ai import ClaudeAiIngestor
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "ingest"
 EXPORT = FIXTURES / "claude_ai_export" / "conversations.json"
@@ -146,7 +146,7 @@ def test_invalid_json_raises_ingest_error(tmp_path: Path):
     p = tmp_path / "conversations.json"
     p.write_text("not json at all", encoding="utf-8")
     ing = ClaudeAiIngestor()
-    from core.ingest._base import IngestError
+    from aurochs_recall.core.ingest._base import IngestError
 
     with pytest.raises(IngestError):
         list(ing.extract(p))
@@ -158,7 +158,7 @@ def test_top_level_object_raises_ingest_error(tmp_path: Path):
     p = tmp_path / "conversations.json"
     p.write_text(json.dumps({"foo": "bar"}), encoding="utf-8")
     ing = ClaudeAiIngestor()
-    from core.ingest._base import IngestError
+    from aurochs_recall.core.ingest._base import IngestError
 
     with pytest.raises(IngestError):
         list(ing.extract(p))

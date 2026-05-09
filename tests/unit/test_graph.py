@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from core.db import connect
-from core.graph.linker import Linker, SeedEntity
-from core.graph.store import (
+from aurochs_recall.core.db import connect
+from aurochs_recall.core.graph.linker import Linker, SeedEntity
+from aurochs_recall.core.graph.store import (
     add_entity,
     link_drawer_to_entity,
     link_entity_in_drawer,
@@ -17,8 +17,8 @@ from core.graph.store import (
     list_entities_for_drawer,
     query_entity,
 )
-from core.migrations.runner import run_migrations
-from core.types import Drawer
+from aurochs_recall.core.migrations.runner import run_migrations
+from aurochs_recall.core.types import Drawer
 
 
 def _setup(tmp_path: Path) -> Path:

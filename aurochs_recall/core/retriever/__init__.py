@@ -5,7 +5,7 @@ retrievers slot in behind the same Protocol in later patches.
 """
 from __future__ import annotations
 
-from core.retriever._base import Retriever
-from core.retriever.fts5 import FTS5QueryError, FTS5Retriever
+from aurochs_recall.core.retriever._base import Retriever
+from aurochs_recall.core.retriever.fts5 import FTS5QueryError, FTS5Retriever
 
 __all__ = ["Retriever", "FTS5Retriever", "FTS5QueryError"]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.types import (
+from aurochs_recall.core.types import (
     HASH_INPUT_VERSION,
     Drawer,
     Entity,

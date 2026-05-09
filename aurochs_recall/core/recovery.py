@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.db import connect
+from aurochs_recall.core.db import connect
 
 
 class CorruptionDetected(RuntimeError):

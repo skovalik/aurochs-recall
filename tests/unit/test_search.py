@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from core.search import (
+from aurochs_recall.core.search import (
     ANSI_BOLD_CLOSE,
     ANSI_BOLD_OPEN,
     Searcher,
