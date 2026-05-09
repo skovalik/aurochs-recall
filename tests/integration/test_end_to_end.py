@@ -18,7 +18,7 @@ from aurochs_recall.core.search import Searcher
 # Canned query → expected uid prefixes (12-char content_hash[:12]). Updated
 # automatically when the fixture corpus changes.
 EXPECTED_QUERY_HITS = {
-    "mehrwerk": [
+    "acme": [
         "claude_code:session-aaaa",
         "claude_ai:conv-bbbb",
         "markdown:notes/pricing-2026.md",
@@ -28,10 +28,10 @@ EXPECTED_QUERY_HITS = {
         "claude_ai:conv-bbbb",
         "markdown:notes/lorem-tests.md",
     ],
-    "andrew": [
+    "sam": [
         "claude_code:session-aaaa",
         "claude_ai:conv-bbbb",
-        "markdown:notes/andrew-saaga.md",
+        "markdown:notes/sam-doe.md",
     ],
 }
 
@@ -63,7 +63,7 @@ def test_cli_search_then_open(fixture_db_path, capsys, monkeypatch):
     """Search via CLI, then verify --json gives a uid we can pass back to --open."""
     monkeypatch.setenv("NO_COLOR", "1")
 
-    code = main(["--db", str(fixture_db_path), "search", "mehrwerk", "--json"])
+    code = main(["--db", str(fixture_db_path), "search", "acme", "--json"])
     assert code == 0
     parsed = json.loads(capsys.readouterr().out)
     assert parsed
@@ -105,8 +105,8 @@ def test_score_ordering_stable(fixture_db_path):
     """Same query twice → same ranking. BM25 is deterministic; this guards
     against accidental nondeterminism in our SQL or post-processing."""
     with FTS5Retriever(db_path=fixture_db_path) as r:
-        hits1 = r.search("mehrwerk", limit=5)
-        hits2 = r.search("mehrwerk", limit=5)
+        hits1 = r.search("acme", limit=5)
+        hits2 = r.search("acme", limit=5)
         assert [h.drawer_uid for h in hits1] == [h.drawer_uid for h in hits2]
         assert [h.score for h in hits1] == [h.score for h in hits2]
 
@@ -116,7 +116,7 @@ def test_snippet_is_relevant(fixture_db_path):
     import re
 
     with Searcher(db_path=fixture_db_path, use_color=False) as s:
-        for query in ("mehrwerk", "andrew", "lorem"):
+        for query in ("acme", "sam", "lorem"):
             hits = s.search(query, limit=3)
             for h in hits:
                 stripped = re.sub(r"\x1b\[[0-9;]*m", "", h.snippet)

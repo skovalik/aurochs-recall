@@ -65,7 +65,7 @@ What "daily use for months" actually looked like:
 - **Debugging tasks.** Errors and stack traces are queried directly:
   recall surfaces the prior session that hit the same error and the
   fix that worked.
-- **Research synthesis.** Multi-week research threads (Mehrwerk
+- **Research synthesis.** Multi-week research threads (Acme Corp
   guerrilla MVP, Wellspring Paradox, Cognograph competitive
   landscape) are indexed and queryable — the alternative was losing
   context every time a session crashed.

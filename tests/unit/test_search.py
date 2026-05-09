@@ -21,14 +21,14 @@ def _strip_ansi(s: str) -> str:
 
 def test_search_default_mode(fixture_db_path):
     with Searcher(db_path=fixture_db_path, use_color=False) as s:
-        hits = s.search("mehrwerk")
+        hits = s.search("acme")
         assert hits
         assert all(h.snippet for h in hits)
 
 
 def test_search_returns_drawers_alongside(fixture_db_path):
     with Searcher(db_path=fixture_db_path, use_color=False) as s:
-        hits = s.search("mehrwerk", limit=3)
+        hits = s.search("acme", limit=3)
         assert len(s.last_drawers) == len(hits)
         for hit, drawer in zip(hits, s.last_drawers):
             assert hit.drawer_uid == drawer.drawer_uid
@@ -59,7 +59,7 @@ def test_snippet_full_mode_preserves_content(fixture_db_path):
 
 def test_ansi_bolding_with_color(fixture_db_path):
     with Searcher(db_path=fixture_db_path, use_color=True) as s:
-        hits = s.search("mehrwerk", limit=1)
+        hits = s.search("acme", limit=1)
         assert hits
         # Snippet should contain ANSI bold around the matched term.
         assert ANSI_BOLD_OPEN in hits[0].snippet
@@ -70,7 +70,7 @@ def test_no_color_env_disables_bolding(fixture_db_path, monkeypatch):
     monkeypatch.setenv("NO_COLOR", "1")
     # use_color=None => respect environment.
     with Searcher(db_path=fixture_db_path, use_color=None) as s:
-        hits = s.search("mehrwerk", limit=1)
+        hits = s.search("acme", limit=1)
         assert hits
         assert ANSI_BOLD_OPEN not in hits[0].snippet
 
@@ -78,7 +78,7 @@ def test_no_color_env_disables_bolding(fixture_db_path, monkeypatch):
 def test_use_color_explicit_overrides_env(fixture_db_path, monkeypatch):
     monkeypatch.setenv("NO_COLOR", "1")
     with Searcher(db_path=fixture_db_path, use_color=True) as s:
-        hits = s.search("mehrwerk", limit=1)
+        hits = s.search("acme", limit=1)
         assert hits
         # Explicit constructor arg wins over env.
         assert ANSI_BOLD_OPEN in hits[0].snippet
@@ -89,7 +89,7 @@ def test_snippet_window_around_first_match(fixture_db_path):
     with Searcher(db_path=fixture_db_path, use_color=False) as s:
         hits = s.search("dashboard", limit=3)
         # At least one drawer ('What about recall and search behaviour for the
-        # Mehrwerk dashboard?') has 'dashboard' near the end. Its snippet
+        # Acme Corp dashboard?') has 'dashboard' near the end. Its snippet
         # should still surface it.
         for h in hits:
             stripped = _strip_ansi(h.snippet)
@@ -104,21 +104,21 @@ def test_filter_by_source_passed_through(fixture_db_path):
 
 
 def test_extract_match_terms_basic():
-    assert _extract_match_terms("mehrwerk pricing") == ["mehrwerk", "pricing"]
+    assert _extract_match_terms("acme pricing") == ["acme", "pricing"]
 
 
 def test_extract_match_terms_strips_fts5_operators():
-    terms = _extract_match_terms("mehrwerk OR andrew NEAR/5 saaga")
-    assert "mehrwerk" in terms
-    assert "andrew" in terms
-    assert "saaga" in terms
+    terms = _extract_match_terms("acme OR sam NEAR/5 doe")
+    assert "acme" in terms
+    assert "sam" in terms
+    assert "doe" in terms
     assert "OR" not in terms
     assert "NEAR" not in terms
 
 
 def test_extract_match_terms_handles_quotes():
-    terms = _extract_match_terms('"mehrwerk pricing"')
-    assert terms == ["mehrwerk", "pricing"]
+    terms = _extract_match_terms('"acme pricing"')
+    assert terms == ["acme", "pricing"]
 
 
 def test_extract_match_terms_empty():
@@ -126,9 +126,9 @@ def test_extract_match_terms_empty():
 
 
 def test_first_match_index_finds_earliest():
-    text = "no match here. then andrew. then mehrwerk."
-    # andrew first, mehrwerk second
-    assert _first_match_index(text, ["mehrwerk", "andrew"]) == text.lower().find("andrew")
+    text = "no match here. then sam. then acme."
+    # sam first, acme second
+    assert _first_match_index(text, ["acme", "sam"]) == text.lower().find("sam")
 
 
 def test_first_match_index_no_match():
@@ -175,15 +175,15 @@ def test_rerank_disabled_with_reranker_false(fixture_db_path):
     """reranker=False forces BM25-only even when extras are installed."""
     with Searcher(db_path=fixture_db_path, reranker=False, use_color=False) as s:
         assert s.has_reranker is False
-        hits = s.search("mehrwerk")
+        hits = s.search("acme")
         assert hits
 
 
 def test_rerank_mode_falls_back_when_no_reranker(fixture_db_path):
     """mode='rerank' with reranker=False degrades to BM25 ordering."""
     with Searcher(db_path=fixture_db_path, reranker=False, use_color=False) as s:
-        bm25_hits = s.search("mehrwerk", mode="bm25", limit=5)
-        rerank_hits = s.search("mehrwerk", mode="rerank", limit=5)
+        bm25_hits = s.search("acme", mode="bm25", limit=5)
+        rerank_hits = s.search("acme", mode="rerank", limit=5)
         # Without a reranker, mode='rerank' returns the same shape as bm25.
         assert [h.drawer_uid for h in rerank_hits] == [h.drawer_uid for h in bm25_hits]
 

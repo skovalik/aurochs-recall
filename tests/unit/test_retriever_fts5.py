@@ -13,7 +13,7 @@ from aurochs_recall.core.retriever.fts5 import (
 
 def test_basic_query_returns_hits(fixture_conn):
     r = FTS5Retriever(conn=fixture_conn)
-    hits = r.search("mehrwerk")
+    hits = r.search("acme")
     assert len(hits) >= 3
     assert all(h.rank >= 1 for h in hits)
     # Lower rank index = better — rank 1 first
@@ -38,17 +38,17 @@ def test_literal_mode_quotes_special_chars(fixture_conn):
     """A query with FTS5 metacharacters should not raise in literal mode."""
     r = FTS5Retriever(conn=fixture_conn)
     # Parens and quotes would break a raw FTS5 expression.
-    hits = r.search('mehrwerk (test) "quote"')
+    hits = r.search('acme (test) "quote"')
     # Doesn't have to find anything, but must not raise.
     assert isinstance(hits, list)
 
 
 def test_raw_mode_supports_or(fixture_conn):
     r = FTS5Retriever(conn=fixture_conn)
-    hits = r.search("mehrwerk OR andrew", raw=True)
-    # Should find drawers matching either term — more than just "mehrwerk".
-    only_mehrwerk = r.search("mehrwerk")
-    assert len(hits) > len(only_mehrwerk)
+    hits = r.search("acme OR sam", raw=True)
+    # Should find drawers matching either term — more than just "acme".
+    only_acme = r.search("acme")
+    assert len(hits) > len(only_acme)
 
 
 def test_raw_mode_invalid_syntax_raises(fixture_conn):
@@ -92,7 +92,7 @@ def test_filter_by_register(fixture_conn):
 
 def test_filter_by_role(fixture_conn):
     r = FTS5Retriever(conn=fixture_conn)
-    hits = r.search("mehrwerk", role="assistant")
+    hits = r.search("acme", role="assistant")
     for h in hits:
         d = r.fetch_drawer(h.drawer_uid)
         assert d is not None and d.role == "assistant"
@@ -119,12 +119,12 @@ def test_default_limit_applied_when_omitted(fixture_conn):
 
 def test_fetch_drawer_round_trip(fixture_conn):
     r = FTS5Retriever(conn=fixture_conn)
-    hits = r.search("mehrwerk", limit=1)
+    hits = r.search("acme", limit=1)
     assert hits
     d = r.fetch_drawer(hits[0].drawer_uid)
     assert d is not None
     assert d.drawer_uid == hits[0].drawer_uid
-    assert "mehrwerk" in d.content.lower()
+    assert "acme" in d.content.lower()
 
 
 def test_fetch_drawer_unknown_returns_none(fixture_conn):
@@ -134,7 +134,7 @@ def test_fetch_drawer_unknown_returns_none(fixture_conn):
 
 def test_search_with_drawers_pairs(fixture_conn):
     r = FTS5Retriever(conn=fixture_conn)
-    pairs = r.search_with_drawers("mehrwerk", limit=3)
+    pairs = r.search_with_drawers("acme", limit=3)
     assert len(pairs) >= 1
     for hit, drawer in pairs:
         assert hit.drawer_uid == drawer.drawer_uid
@@ -152,7 +152,7 @@ def test_db_path_constructor(fixture_db_path):
     """Constructor without conn opens its own."""
     r = FTS5Retriever(db_path=fixture_db_path)
     try:
-        hits = r.search("mehrwerk")
+        hits = r.search("acme")
         assert hits
     finally:
         r.close()
@@ -166,7 +166,7 @@ def test_constructor_requires_conn_or_path():
 def test_bm25_ordering_best_first(fixture_conn):
     """Higher score = better; rank should align with score order."""
     r = FTS5Retriever(conn=fixture_conn)
-    hits = r.search("mehrwerk", limit=10)
+    hits = r.search("acme", limit=10)
     if len(hits) > 1:
         for a, b in zip(hits, hits[1:]):
             assert a.score >= b.score

@@ -8,7 +8,7 @@ same database. Re-running this script regenerates it byte-for-byte.
 
 Layout: 20 drawers across 3 sources (claude_code, claude_ai, markdown), each
 with deterministic timestamps and content built around a small set of seed
-terms (``mehrwerk``, ``lorem``, ``pricing``, ``recall``, ``andrew``). This
+terms (``acme``, ``lorem``, ``pricing``, ``recall``, ``sam``). This
 keeps test queries small and predictable.
 """
 from __future__ import annotations
@@ -33,24 +33,24 @@ SCHEMA_PATH = REPO_ROOT / "aurochs_recall" / "core" / "migrations" / "0001_initi
 # 20 deterministic drawers. (source, source_id, role, content, created_at,
 #                            register, thread_id, position_in_thread)
 DRAWERS = [
-    # claude_code session — 6 messages around Mehrwerk pricing
+    # claude_code session — 6 messages around Acme Corp pricing
     ("claude_code", "session-aaaa-001", "human",
-     "Lorem ipsum dolor sit amet. Stefan asked about Mehrwerk pricing.",
+     "Lorem ipsum dolor sit amet. Stefan asked about Acme Corp pricing.",
      1704067200, None, "session-aaaa", 0),
     ("claude_code", "session-aaaa-002", "assistant",
-     "The Mehrwerk pricing breakdown shows that Cembra Money Bank uses a value-based model. Lorem ipsum.",
+     "The Acme Corp pricing breakdown shows that Bank Y uses a value-based model. Lorem ipsum.",
      1704067260, "technical", "session-aaaa", 1),
     ("claude_code", "session-aaaa-003", "human",
-     "Can you recall the comparison with Andrew Saaga's pricing approach?",
+     "Can you recall the comparison with Sam Doe's pricing approach?",
      1704067320, None, "session-aaaa", 2),
     ("claude_code", "session-aaaa-004", "assistant",
-     "Andrew Saaga's pricing is fundamentally different — he builds infra not branding.",
+     "Sam Doe's pricing is fundamentally different — he builds infra not branding.",
      1704067380, "technical", "session-aaaa", 3),
     ("claude_code", "session-aaaa-005", "human",
-     "What about recall and search behaviour for the Mehrwerk dashboard?",
+     "What about recall and search behaviour for the Acme Corp dashboard?",
      1704067440, None, "session-aaaa", 4),
     ("claude_code", "session-aaaa-006", "assistant",
-     "Recall the Mehrwerk dashboard supports both keyword search and BM25 ranking.",
+     "Recall the Acme Corp dashboard supports both keyword search and BM25 ranking.",
      1704067500, "technical", "session-aaaa", 5),
 
     # claude_ai exported conversation — 5 messages, older
@@ -58,7 +58,7 @@ DRAWERS = [
      "I told them pricing would be tied to outcomes, not deliverables.",
      1700000000, None, "conv-bbbb", 0),
     ("claude_ai", "conv-bbbb-002", "assistant",
-     "That aligns with the Mehrwerk pricing model — pure performance-based fees.",
+     "That aligns with the Acme Corp pricing model — pure performance-based fees.",
      1700000100, "selling", "conv-bbbb", 1),
     ("claude_ai", "conv-bbbb-003", "human",
      "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
@@ -67,19 +67,19 @@ DRAWERS = [
      "Lorem ipsum is filler text traditionally used in design mockups.",
      1700000300, "teaching", "conv-bbbb", 3),
     ("claude_ai", "conv-bbbb-005", "human",
-     "Andrew Melnychuk-Oseen runs Saaga AI — MCP infrastructure work.",
+     "Sam Doe runs Acme AI — MCP infrastructure work.",
      1700000400, None, "conv-bbbb", 4),
 
     # markdown notes — 9 short entries
     ("markdown", "notes/pricing-2026.md", "wiki",
-     "# Pricing notes 2026\n\nMehrwerk pricing strategy: outcome-tied retainers with milestones.",
+     "# Pricing notes 2026\n\nAcme Corp pricing strategy: outcome-tied retainers with milestones.",
      1710000000, None, "notes/pricing-2026.md", 0),
     ("markdown", "notes/recall-architecture.md", "wiki",
      "# Recall architecture\n\nFour layers: drawers, index, graph, access log. Lorem ipsum filler.",
      1710086400, None, "notes/recall-architecture.md", 0),
-    ("markdown", "notes/andrew-saaga.md", "wiki",
-     "# Andrew Saaga\n\nFractional CTO Vygandas. Petaluma. MCP infra. Angel investor.",
-     1710172800, None, "notes/andrew-saaga.md", 0),
+    ("markdown", "notes/sam-doe.md", "wiki",
+     "# Sam Doe\n\nFractional CTO Robin. Springfield. MCP infra. Angel investor.",
+     1710172800, None, "notes/sam-doe.md", 0),
     ("markdown", "notes/lorem-tests.md", "wiki",
      "Lorem ipsum dolor sit amet. Consectetur. Lorem in different context. Lorem.",
      1710259200, None, "notes/lorem-tests.md", 0),

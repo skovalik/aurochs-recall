@@ -69,9 +69,9 @@ def _list_tool_names(server) -> list[str]:
 
 def test_do_recall_search_returns_hits(fixture_db_path, monkeypatch):
     monkeypatch.setenv("RECALL_DB", str(fixture_db_path))
-    payload = _do_recall_search("mehrwerk", top_k=5)
+    payload = _do_recall_search("acme", top_k=5)
     assert payload["ok"] is True
-    assert payload["query"] == "mehrwerk"
+    assert payload["query"] == "acme"
     assert payload["top_k"] == 5
     assert isinstance(payload["hits"], list)
     if payload["hits"]:

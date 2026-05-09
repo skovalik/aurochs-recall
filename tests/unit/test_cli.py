@@ -62,16 +62,16 @@ def test_no_args_prints_help(capsys):
 
 def test_bare_query_dispatches_to_search(fixture_db_path, capsys, monkeypatch):
     monkeypatch.setenv("NO_COLOR", "1")
-    code = main(["--db", str(fixture_db_path), "mehrwerk"])
+    code = main(["--db", str(fixture_db_path), "acme"])
     assert code == 0
     out = capsys.readouterr().out
-    assert "mehrwerk" in out.lower()
+    assert "acme" in out.lower()
     assert "bm25=" in out
 
 
 def test_search_subcommand_explicit(fixture_db_path, capsys, monkeypatch):
     monkeypatch.setenv("NO_COLOR", "1")
-    code = main(["--db", str(fixture_db_path), "search", "mehrwerk"])
+    code = main(["--db", str(fixture_db_path), "search", "acme"])
     assert code == 0
     out = capsys.readouterr().out
     assert "bm25=" in out
@@ -87,7 +87,7 @@ def test_search_no_hits_returns_nonzero(fixture_db_path, capsys, monkeypatch):
 
 def test_search_json_output(fixture_db_path, capsys, monkeypatch):
     monkeypatch.setenv("NO_COLOR", "1")
-    code = main(["--db", str(fixture_db_path), "mehrwerk", "--json"])
+    code = main(["--db", str(fixture_db_path), "acme", "--json"])
     assert code == 0
     out = capsys.readouterr().out
     parsed = json.loads(out)
@@ -130,7 +130,7 @@ def test_search_invalid_date(fixture_db_path, capsys, monkeypatch):
 def test_search_raw_mode(fixture_db_path, capsys, monkeypatch):
     monkeypatch.setenv("NO_COLOR", "1")
     code = main(
-        ["--db", str(fixture_db_path), "search", "mehrwerk OR andrew",
+        ["--db", str(fixture_db_path), "search", "acme OR sam",
          "--raw", "--json"]
     )
     assert code == 0
@@ -430,7 +430,7 @@ def test_unicode_query_does_not_crash_on_simulated_cp1252(
     # if main() correctly calls reconfigure (or no-ops on streams that
     # don't support it), this query runs without the crash that the
     # smoke test reported.
-    code = main(["--db", str(fixture_db_path), "search", "mehrwerk"])
+    code = main(["--db", str(fixture_db_path), "search", "acme"])
     # Either hits or no-hits is fine; the test is about no-crash.
     assert code in (0, 1)
     # Verify capsys captured something (proves output went through).
