@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pytest
 
-from aurochs_recall.core.db import connect
+from aurochs_recall.core.db import db_connect
 from aurochs_recall.core.extraction import (
     DEFAULT_BUDGET_USD,
     DEFAULT_MODEL,
@@ -79,7 +79,7 @@ class _FakeClient(_ProviderClient):
 def db_path(tmp_path: Path) -> Path:
     """A fresh recall.db with schema v2 applied + one drawer inserted."""
     p = tmp_path / "recall.db"
-    conn = connect(p)
+    conn = db_connect(p)
     try:
         apply_schema(conn)
         # Insert a single drawer so extract_drawer has something to look at.
@@ -280,7 +280,7 @@ def test_enqueue_is_idempotent(db_path: Path, drawer_uid: str) -> None:
 
 def test_enqueue_for_extraction_helper_works(db_path: Path, drawer_uid: str) -> None:
     """The index-time helper inserts via an existing connection."""
-    conn = connect(db_path)
+    conn = db_connect(db_path)
     try:
         inserted = enqueue_for_extraction(conn, drawer_uid)
         assert inserted is True
@@ -300,7 +300,7 @@ def test_enqueue_rejects_empty_uid(db_path: Path) -> None:
 def test_enqueue_for_extraction_no_op_on_pre_t1_db(tmp_path: Path) -> None:
     """When extract_pending doesn't exist, the helper returns False quietly."""
     p = tmp_path / "pre_t1.db"
-    conn = connect(p)
+    conn = db_connect(p)
     try:
         # Apply only schema v1 (the legacy pre-T1 state).
         apply_schema(conn, version=1)
@@ -432,7 +432,7 @@ def test_extract_pending_stops_on_budget_exhaustion(
 ) -> None:
     """extract_pending() should bail early on the first budget_exhausted result."""
     # Insert a second drawer so we have two pending items.
-    conn = connect(db_path)
+    conn = db_connect(db_path)
     try:
         d2 = Drawer(
             source="test", source_id="t2", role="human",
@@ -575,7 +575,7 @@ def test_pending_cascades_on_drawer_delete(db_path: Path, drawer_uid: str) -> No
     runner.enqueue(drawer_uid)
     assert len(runner.list_pending()) == 1
 
-    conn = connect(db_path)
+    conn = db_connect(db_path)
     try:
         # Need to delete FTS5 row first because there's no FK from drawers_fts.
         rowid = conn.execute(
@@ -597,7 +597,7 @@ def test_runs_cascade_on_drawer_delete(db_path: Path, drawer_uid: str) -> None:
     runner = ExtractionRunner(db_path, client=fake)
     runner.extract_drawer(drawer_uid)
 
-    conn = connect(db_path)
+    conn = db_connect(db_path)
     try:
         before = conn.execute(
             "SELECT COUNT(*) FROM extraction_runs WHERE drawer_uid=?", (drawer_uid,)

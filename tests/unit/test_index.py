@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from aurochs_recall.core.db import connect
+from aurochs_recall.core.db import db_connect
 from aurochs_recall.core.index import Indexer
 from aurochs_recall.core.migrations.runner import run_migrations
 from aurochs_recall.core.types import Drawer
@@ -48,7 +48,7 @@ class TestIndexDrawers:
         added = idx.index_drawers(drawers)
         assert added == 3
 
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             count = conn.execute(
                 "SELECT COUNT(*) FROM drawer_meta"
@@ -68,7 +68,7 @@ class TestIndexDrawers:
         # Second call inserts 0 — UNIQUE on (content_hash, source, source_id).
         assert idx.index_drawers([d2]) == 0
 
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             count = conn.execute(
                 "SELECT COUNT(*) FROM drawer_meta"
@@ -93,7 +93,7 @@ class TestIndexDrawers:
         idx = Indexer(db)
         idx.index_drawers([_make_drawer("the quick brown fox")])
 
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             row = conn.execute(
                 "SELECT content FROM drawers_fts WHERE drawers_fts MATCH 'quick'"

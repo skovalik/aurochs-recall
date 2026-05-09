@@ -16,7 +16,9 @@ are explicit, not implicit.
   contention before giving up.
 - **`PRAGMA journal_mode = WAL`** — concurrent reads do not block on
   writers.
-- **`PRAGMA wal_autocheckpoint = 1000`** — bounded WAL growth.
+- **`PRAGMA synchronous = NORMAL`** — WAL-safe; cheaper than the default
+  FULL on bulk inserts. WAL autocheckpoint stays at SQLite's default
+  (1000 pages), which keeps WAL growth bounded for typical workloads.
 - **SIGINT handler** — graceful checkpoint on Ctrl-C; writers don't
   leave half-applied state.
 

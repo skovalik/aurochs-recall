@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from aurochs_recall.core.db import connect
+from aurochs_recall.core.db import db_connect
 from aurochs_recall.core.graph.linker import Linker, SeedEntity
 from aurochs_recall.core.graph.store import (
     add_entity,
@@ -34,7 +34,7 @@ def _setup(tmp_path: Path) -> Path:
 class TestAddEntity:
     def test_inserts_new(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             e = add_entity(conn, "Stefan Kovalik", "person")
             assert e.id > 0
@@ -46,7 +46,7 @@ class TestAddEntity:
 
     def test_get_or_create(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             e1 = add_entity(conn, "Stefan", "person")
             e2 = add_entity(conn, "Stefan", "person")
@@ -56,7 +56,7 @@ class TestAddEntity:
 
     def test_case_insensitive_dedup(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             e1 = add_entity(conn, "Stefan", "person")
             e2 = add_entity(conn, "stefan", "person")
@@ -67,7 +67,7 @@ class TestAddEntity:
 
     def test_type_distinguishes(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             person = add_entity(conn, "Cognograph", "person")
             project = add_entity(conn, "Cognograph", "project")
@@ -79,7 +79,7 @@ class TestAddEntity:
 class TestQueryEntity:
     def test_finds(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             add_entity(conn, "Stefan", "person")
             results = query_entity(conn, "Stefan")
@@ -90,7 +90,7 @@ class TestQueryEntity:
 
     def test_empty_for_unknown(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             assert query_entity(conn, "Nobody") == []
         finally:
@@ -98,7 +98,7 @@ class TestQueryEntity:
 
     def test_filter_by_type(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             add_entity(conn, "Cognograph", "person")
             add_entity(conn, "Cognograph", "project")
@@ -116,7 +116,7 @@ class TestQueryEntity:
 class TestLinkEntityInDrawer:
     def test_creates_mention(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             # Insert a drawer first so the FK target exists.
             drawer = Drawer(
@@ -170,7 +170,7 @@ class TestLinkEntityInDrawer:
 
     def test_list_entities_for_drawer(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             drawer = Drawer(
                 source="markdown",
@@ -208,7 +208,7 @@ class TestLinkEntityInDrawer:
         """The canonical name link_drawer_to_entity is callable and shares
         state with link_entity_in_drawer (they're aliases of each other)."""
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             drawer = Drawer(
                 source="markdown", source_id="f:0", role="wiki",
@@ -233,7 +233,7 @@ class TestLinkEntityInDrawer:
 
     def test_link_drawer_to_entity_validates_inputs(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             drawer = Drawer(
                 source="markdown", source_id="f:0", role="wiki",
@@ -268,7 +268,7 @@ class TestLinkEntityInDrawer:
     def test_list_drawers_for_entity(self, tmp_path: Path) -> None:
         """Reverse lookup: entity → drawers that mention it."""
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             drawer_a = Drawer(
                 source="markdown", source_id="a", role="wiki",
@@ -308,7 +308,7 @@ class TestLinkEntityInDrawer:
 class TestLinker:
     def test_matches_canonical(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             drawer = Drawer(
                 source="markdown", source_id="f:0", role="wiki",
@@ -338,7 +338,7 @@ class TestLinker:
 
     def test_matches_alias(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             drawer = Drawer(
                 source="markdown", source_id="f:0", role="wiki",
@@ -371,7 +371,7 @@ class TestLinker:
 
     def test_word_boundary_does_not_match_substring(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             drawer = Drawer(
                 source="markdown", source_id="f:0", role="wiki",
@@ -394,7 +394,7 @@ class TestLinker:
 
     def test_case_insensitive(self, tmp_path: Path) -> None:
         db = _setup(tmp_path)
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             drawer = Drawer(
                 source="markdown", source_id="f:0", role="wiki",

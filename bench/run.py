@@ -39,7 +39,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from aurochs_recall.core.db import connect  # noqa: E402
+from aurochs_recall.core.db import db_connect  # noqa: E402
 from aurochs_recall.core.migrations.runner import run_migrations  # noqa: E402
 from aurochs_recall.core.retriever.fts5 import FTS5Retriever  # noqa: E402
 from aurochs_recall.core.types import Drawer  # noqa: E402
@@ -223,7 +223,7 @@ def _index_drawers(drawers: Sequence[Drawer], db_path: Path) -> float:
     bench number to be meaningful.
     """
     run_migrations(db_path)
-    conn = connect(db_path)
+    conn = db_connect(db_path)
     try:
         start = time.perf_counter()
         conn.execute("BEGIN")
@@ -293,7 +293,7 @@ def _evaluate_queries(
     if top_k <= 0:
         raise ValueError("top_k must be positive")
 
-    conn = connect(db_path)
+    conn = db_connect(db_path)
     try:
         retriever = FTS5Retriever(conn=conn)
 

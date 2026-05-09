@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from aurochs_recall.core.db import connect
+from aurochs_recall.core.db import db_connect
 from aurochs_recall.core.schema import CURRENT_SCHEMA_VERSION, apply_schema, current_schema_version
 
 
 def test_apply_schema_creates_all_tables(tmp_path: Path) -> None:
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         apply_schema(conn)
         tables = {
@@ -47,7 +47,7 @@ def test_apply_schema_creates_all_tables(tmp_path: Path) -> None:
 
 def test_schema_idempotent(tmp_path: Path) -> None:
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         apply_schema(conn)
         # Apply again — should not raise.
@@ -71,7 +71,7 @@ def test_schema_idempotent(tmp_path: Path) -> None:
 
 def test_seed_data_loaded(tmp_path: Path) -> None:
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         apply_schema(conn)
 
@@ -104,7 +104,7 @@ def test_seed_data_loaded(tmp_path: Path) -> None:
 def test_foreign_keys_pragma_on(tmp_path: Path) -> None:
     """The whole point of plan v4 fix #2 — FKs must be enforced."""
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         result = conn.execute("PRAGMA foreign_keys").fetchone()[0]
         assert result == 1, "PRAGMA foreign_keys must be ON for every connection"
@@ -114,7 +114,7 @@ def test_foreign_keys_pragma_on(tmp_path: Path) -> None:
 
 def test_journal_mode_wal(tmp_path: Path) -> None:
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         result = conn.execute("PRAGMA journal_mode").fetchone()[0]
         assert result.lower() == "wal"
@@ -124,7 +124,7 @@ def test_journal_mode_wal(tmp_path: Path) -> None:
 
 def test_busy_timeout_set(tmp_path: Path) -> None:
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         result = conn.execute("PRAGMA busy_timeout").fetchone()[0]
         assert result == 30000
@@ -135,7 +135,7 @@ def test_busy_timeout_set(tmp_path: Path) -> None:
 def test_fk_actually_enforces(tmp_path: Path) -> None:
     """Smoke-test that FK enforcement is more than a pragma name."""
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         apply_schema(conn)
         # entities.type FK must reference entity_types — inserting an
@@ -152,7 +152,7 @@ def test_fk_actually_enforces(tmp_path: Path) -> None:
 
 def test_check_constraint_drawer_uid_nonempty(tmp_path: Path) -> None:
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         apply_schema(conn)
         with pytest.raises(Exception):  # IntegrityError from CHECK
@@ -167,7 +167,7 @@ def test_check_constraint_drawer_uid_nonempty(tmp_path: Path) -> None:
 
 def test_check_constraint_risk_score_range(tmp_path: Path) -> None:
     db = tmp_path / "recall.db"
-    conn = connect(db)
+    conn = db_connect(db)
     try:
         apply_schema(conn)
         with pytest.raises(Exception):  # IntegrityError from CHECK

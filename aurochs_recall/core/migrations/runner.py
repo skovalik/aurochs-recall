@@ -23,8 +23,9 @@ import sqlite3
 import time
 from pathlib import Path
 
-from aurochs_recall.core.db import connect
-from aurochs_recall.core.locks import MigrateLock
+from aurochs_core import MigrateLock
+
+from aurochs_recall.core.db import db_connect
 from aurochs_recall.core.schema import (
     CURRENT_SCHEMA_VERSION,
     apply_schema,
@@ -81,7 +82,7 @@ def run_migrations(
         raise MigrationError("No migration files found in core/migrations/")
 
     with MigrateLock(db, timeout=_LOCK_TIMEOUT_SECONDS):
-        conn = connect(db)
+        conn = db_connect(db)
         try:
             applied = current_schema_version(conn)
 

@@ -17,7 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from aurochs_recall.core.locks import LockError, MigrateLock, WriteLock, _pid_alive
+from aurochs_core import LockError, MigrateLock, WriteLock
+from aurochs_core.locks import _pid_alive
 
 
 # ---------------------------------------------------------------------------

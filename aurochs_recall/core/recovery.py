@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from aurochs_recall.core.db import connect
+from aurochs_recall.core.db import db_connect
 
 
 class CorruptionDetected(RuntimeError):
@@ -66,7 +66,7 @@ def verify_or_rebuild(db_path: Path | str) -> None:
         # Fresh install — nothing to verify yet.
         return
 
-    conn = connect(path)
+    conn = db_connect(path)
     try:
         rows = conn.execute("PRAGMA integrity_check").fetchall()
         # integrity_check returns one row containing the literal string 'ok'

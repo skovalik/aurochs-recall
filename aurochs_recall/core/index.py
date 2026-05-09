@@ -44,8 +44,9 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from aurochs_recall.core.db import connect
-from aurochs_recall.core.locks import WriteLock
+from aurochs_core import WriteLock
+
+from aurochs_recall.core.db import db_connect
 from aurochs_recall.core.recovery import verify_or_rebuild
 from aurochs_recall.core.types import Drawer
 
@@ -134,7 +135,7 @@ class Indexer:
         """
         added = 0
         with WriteLock(self.db_path, timeout=_WRITE_LOCK_TIMEOUT):
-            conn = connect(self.db_path)
+            conn = db_connect(self.db_path)
             try:
                 added = _bulk_insert_drawers(
                     conn, drawers, enqueue_extract=enqueue_extract
@@ -155,7 +156,7 @@ class Indexer:
         """
         added = 0
         with WriteLock(self.db_path, timeout=_WRITE_LOCK_TIMEOUT):
-            conn = connect(self.db_path)
+            conn = db_connect(self.db_path)
             try:
                 for file_path in ingestor.discover_files(root):
                     if not _file_needs_index(conn, source_name, file_path):
@@ -200,7 +201,7 @@ class Indexer:
         # Filter to files that actually need indexing; do this in the
         # parent so we don't fork workers just to no-op.
         with WriteLock(self.db_path, timeout=_WRITE_LOCK_TIMEOUT):
-            conn = connect(self.db_path)
+            conn = db_connect(self.db_path)
             try:
                 stale = [f for f in files if _file_needs_index(conn, source_name, f)]
             finally:
@@ -241,7 +242,7 @@ def _worker_index_one_file(file_path_str: str, db_path_str: str, source_name: st
     if not drawers:
         return 0
 
-    conn = connect(db_path)
+    conn = db_connect(db_path)
     try:
         inserted = _bulk_insert_drawers(conn, drawers)
         _record_index_state(conn, source_name, file_path, inserted)
@@ -727,7 +728,7 @@ def run_index(
     total_skipped = 0
     print(f"Indexing into {target_db}")
     with WriteLock(target_db, timeout=_WRITE_LOCK_TIMEOUT):
-        conn = connect(target_db)
+        conn = db_connect(target_db)
         try:
             for source in enabled:
                 root = source.expanded_path

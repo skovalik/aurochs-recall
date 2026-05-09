@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-from aurochs_recall.core.db import connect
+from aurochs_recall.core.db import db_connect
 
 # ---------------------------------------------------------------------------
 # Constants & contracts
@@ -504,7 +504,7 @@ class ExtractionRunner:
         if not drawer_uid:
             raise ValueError("drawer_uid must be non-empty")
         version = prompt_version or self.prompt_version
-        conn = connect(self.db_path)
+        conn = db_connect(self.db_path)
         try:
             conn.execute(
                 "INSERT OR IGNORE INTO extract_pending "
@@ -522,7 +522,7 @@ class ExtractionRunner:
         -------
         list of (drawer_uid, prompt_template, prompt_version, enqueued_at).
         """
-        conn = connect(self.db_path)
+        conn = db_connect(self.db_path)
         try:
             rows = conn.execute(
                 "SELECT drawer_uid, prompt_template, prompt_version, enqueued_at "
@@ -568,7 +568,7 @@ class ExtractionRunner:
             raise ValueError("drawer_uid must be non-empty")
 
         version_to_record = prompt_version or self.prompt_version
-        conn = connect(self.db_path)
+        conn = db_connect(self.db_path)
         try:
             content_row = conn.execute(
                 "SELECT f.content AS content "
@@ -643,7 +643,7 @@ class ExtractionRunner:
 
     def get_extraction_status(self, drawer_uid: str) -> ExtractionStatus:
         """Aggregate the latest status across all runs for a drawer."""
-        conn = connect(self.db_path)
+        conn = db_connect(self.db_path)
         try:
             pending_row = conn.execute(
                 "SELECT 1 FROM extract_pending WHERE drawer_uid = ?",

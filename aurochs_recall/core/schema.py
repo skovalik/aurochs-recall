@@ -59,7 +59,7 @@ def apply_schema(
     Parameters
     ----------
     conn:
-        Open sqlite3 Connection (preferably one from ``core.db.connect``).
+        Open sqlite3 Connection (preferably one from ``core.db.db_connect``).
     version:
         Highest schema version to apply. Defaults to ``CURRENT_SCHEMA_VERSION``.
         All earlier versions are applied first.
