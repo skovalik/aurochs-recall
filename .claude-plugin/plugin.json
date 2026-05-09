@@ -1,0 +1,19 @@
+{
+  "name": "aurochs-recall",
+  "version": "0.1.0",
+  "description": "Memory architecture for your AI conversations. Drawers preserve verbatim text. The index makes it instantly findable. The knowledge graph remembers what's connected to what. Local SQLite. No paraphrasing.",
+  "homepage": "https://github.com/skovalik/aurochs-recall",
+  "repository": "https://github.com/skovalik/aurochs-recall",
+  "license": "MIT",
+  "author": {
+    "name": "Stefan Kovalik",
+    "email": "stefan@aurochs.agency"
+  },
+  "keywords": ["memory", "retrieval", "claude", "claude-code-plugin", "mcp"],
+  "mcpServers": {
+    "aurochs-recall": {
+      "command": "python",
+      "args": ["-m", "aurochs_recall.mcp.server"]
+    }
+  }
+}

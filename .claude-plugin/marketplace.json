@@ -1,0 +1,26 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "aurochs-recall",
+  "metadata": {
+    "description": "Memory architecture for your AI conversations. Local SQLite drawers + BM25 index + knowledge graph. No paraphrasing."
+  },
+  "owner": {
+    "name": "Stefan Kovalik",
+    "email": "stefan@aurochs.agency"
+  },
+  "plugins": [
+    {
+      "name": "aurochs-recall",
+      "description": "Memory architecture for your AI conversations. Drawers preserve verbatim text. The index makes it instantly findable. The knowledge graph remembers what's connected to what. Local SQLite. No paraphrasing.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Stefan Kovalik",
+        "email": "stefan@aurochs.agency"
+      },
+      "source": ".",
+      "category": "developer-tools",
+      "homepage": "https://github.com/skovalik/aurochs-recall",
+      "tags": ["memory", "retrieval", "search", "knowledge-graph", "mcp", "sqlite"]
+    }
+  ]
+}

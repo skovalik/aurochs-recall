@@ -109,6 +109,8 @@ packages = ["aurochs_recall"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/aurochs_recall",
+    "/.claude-plugin",
+    "/commands",
     "/docs",
     "/bench",
     "/tests",

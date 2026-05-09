@@ -18,6 +18,21 @@ I built the bench because the category had hyped options that didn't hold up. Pr
 
 **Privacy:** aurochs-recall does not transmit your data anywhere. There is no telemetry, no analytics, no crash reporting. The only network traffic is opt-in BYOK extraction calls to providers you explicitly configure. The recall.db file lives on your disk and you can read it with the standard SQLite CLI.
 
+## Use as a Claude Code plugin
+
+```bash
+/plugin install aurochs-recall
+```
+
+Then in any Claude Code session:
+
+- `/aurochs-recall <args>` — full CLI surface
+- `/recall <query>` — quick search (shortcut)
+- `/recall-status` — DB stats
+- `/recall-forget <prefix>` — hide a drawer
+
+The plugin auto-wires the recall MCP server, so Claude can also invoke recall tools natively.
+
 ## 30-second quickstart
 
 ```bash
