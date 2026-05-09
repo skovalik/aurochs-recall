@@ -20,15 +20,16 @@ For semantic / hybrid retrieval you'll want one of the extras below.
 | `[graph]`        | Kùzu graph database for fast multi-hop traversals                       |
 | `[rerank-llm]`   | LLM-as-reranker (BYOK Anthropic / OpenAI)                               |
 | `[multilingual]` | BGE-M3 + multilingual MiniLM cross-encoder                              |
-| `[mcp]`          | MCP server so Claude / IDE clients can query recall                     |
 | `[backup]`       | zstandard for compressed `recall backup`                                |
 | `[dev]`          | pytest, ruff, mypy                                                      |
 | `[docs]`         | mkdocs-material + the docs build chain                                  |
 | `[all]`          | Everything above                                                        |
 
 ```bash
-pip install "aurochs-recall[chroma,embeddings,mcp]"
+pip install "aurochs-recall[chroma,embeddings]"
 ```
+
+The MCP server ships with the base install; no extra needed for Claude Code / IDE clients to wire it up.
 
 ## First run
 

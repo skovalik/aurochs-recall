@@ -11,8 +11,8 @@ documented here is part of the public API and follows
 - **`seed-predicates.toml`** — placeholder, populated during build
 - **`pii-rules.local` format** — see
   [`.githooks/pii-rules.example`](https://github.com/skovalik/aurochs-recall/blob/main/.githooks/pii-rules.example)
-- **MCP tool JSON schemas** — placeholder; populated when the `[mcp]`
-  extra is implemented
+- **MCP tool JSON schemas** — placeholder; populated as the MCP server
+  contract surface stabilizes
 - **`plugin.json` (Claude Code plugin)** — May 2026 schema; placeholder
 - **Hook stdin/stdout contract** — placeholder
 - **Python API stability declaration** — placeholder

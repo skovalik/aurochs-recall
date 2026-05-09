@@ -45,9 +45,10 @@ classifiers = [
 ]
 dependencies = [
     "aurochs-core>=0.1.0,<0.2.0",
-    "psutil>=5.9",
-    "platformdirs>=4.0",
     "chardet>=5.0",
+    "mcp>=0.9",
+    "platformdirs>=4.0",
+    "psutil>=5.9",
 ]
 
 [project.optional-dependencies]
@@ -71,9 +72,6 @@ multilingual = [
     # BGE-M3 embedding + multilingual MiniLM cross-encoder are model downloads,
     # but they require sentence-transformers as the runtime.
 ]
-mcp = [
-    "mcp>=0.9",
-]
 backup = [
     "zstandard>=0.22",
 ]
@@ -90,7 +88,7 @@ docs = [
     "pymdown-extensions>=10.8",
 ]
 all = [
-    "aurochs-recall[chroma,embeddings,graph,rerank-llm,multilingual,mcp,backup]",
+    "aurochs-recall[chroma,embeddings,graph,rerank-llm,multilingual,backup]",
 ]
 
 [project.scripts]

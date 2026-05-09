@@ -76,7 +76,6 @@ Optional extras (install only what you need):
 | `[graph]`        | Kùzu graph database for fast multi-hop traversals                       |
 | `[rerank-llm]`   | LLM-as-reranker (BYOK Anthropic / OpenAI)                               |
 | `[multilingual]` | BGE-M3 + multilingual MiniLM cross-encoder                              |
-| `[mcp]`          | MCP server so Claude / IDE clients can query recall                     |
 | `[backup]`       | zstandard for compressed `recall backup`                                |
 | `[dev]`          | pytest, ruff, mypy                                                      |
 | `[docs]`         | mkdocs-material + the docs build chain                                  |
@@ -96,7 +95,7 @@ recall forget abc123de --dry-run         # preview hide; --apply to commit
 recall extract --resume                  # crash-safe BYOK extraction restart
 ```
 
-The CLI is the source of truth. The MCP server (`[mcp]` extra) and the Claude Code plugin both call into the same underlying `core/` API.
+The CLI is the source of truth. The MCP server and the Claude Code plugin both call into the same underlying `core/` API.
 
 ## Configuration
 
