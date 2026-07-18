@@ -100,7 +100,7 @@ The CLI is the source of truth. The MCP server and the Claude Code plugin both c
 ## Configuration
 
 `recall init` writes `~/.config/aurochs-recall/sources.toml` (Linux/macOS) or
-`%APPDATA%\aurochs-recall\sources.toml` (Windows). Edit that file to add or
+`%LOCALAPPDATA%\aurochs-recall\aurochs-recall\sources.toml` (Windows). Edit that file to add or
 remove sources. Schema is documented in [`docs/sources.md`](docs/sources.md).
 
 ## Documentation

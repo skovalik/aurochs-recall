@@ -10,7 +10,7 @@ machine-readable version.
 | --------------------- | ------------------------------------------------------------------------ |
 | Linux                 | `~/.config/aurochs-recall/sources.toml`                                  |
 | macOS                 | `~/Library/Application Support/aurochs-recall/sources.toml`              |
-| Windows               | `%APPDATA%\aurochs-recall\sources.toml`                                  |
+| Windows               | `%LOCALAPPDATA%\aurochs-recall\aurochs-recall\sources.toml`              |
 
 `recall init` creates the file. You're expected to edit it as you add or
 remove sources.

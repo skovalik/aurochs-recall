@@ -40,7 +40,7 @@ recall init
 This walks you through source discovery (Claude Code projects, claude.ai
 exports, ChatGPT exports, markdown vaults) and writes
 `~/.config/aurochs-recall/sources.toml` (Linux/macOS) or
-`%APPDATA%\aurochs-recall\sources.toml` (Windows).
+`%LOCALAPPDATA%\aurochs-recall\aurochs-recall\sources.toml` (Windows).
 
 The first ingest runs immediately after `init` completes. Expect a few
 minutes for a typical corpus; subsequent ingests are incremental
@@ -52,7 +52,7 @@ minutes for a typical corpus; subsequent ingests are incremental
 | ------------------------------------------------------------- | ------------------------------- |
 | `~/.local/share/aurochs-recall/recall.db` (Linux)             | The SQLite database (drawers + index + graph + access_log) |
 | `~/Library/Application Support/aurochs-recall/recall.db` (macOS) | Same                          |
-| `%LOCALAPPDATA%\aurochs-recall\recall.db` (Windows)           | Same                            |
+| `%LOCALAPPDATA%\aurochs-recall\aurochs-recall\recall.db` (Windows)           | Same             |
 | `~/.config/aurochs-recall/sources.toml`                       | Sources config                  |
 
 (Override with `--db-path` on any command.)

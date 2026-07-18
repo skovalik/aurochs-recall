@@ -6,7 +6,7 @@ Discovery order:
   3. $AUROCHS_RECALL_CONFIG (env var pointing at a file)
   4. platformdirs.user_config_dir("aurochs-recall") / "sources.toml"
      (Linux: ~/.config/aurochs-recall, macOS: ~/Library/Application Support/...,
-      Windows: %APPDATA%\\aurochs-recall)
+      Windows: %LOCALAPPDATA%\\aurochs-recall\\aurochs-recall)
 
 Schema (v1):
 
@@ -91,8 +91,10 @@ class SourcesConfig:
 def user_config_dir() -> Path:
     """Cross-platform config dir for aurochs-recall.
 
-    Falls back to the XDG-ish default if platformdirs isn't installed yet
-    (during dev). On Windows that default uses %APPDATA%.
+    Uses platformdirs. On Windows this resolves under %LOCALAPPDATA%,
+    double-nested as aurochs-recall\\aurochs-recall, NOT %APPDATA%/Roaming.
+    Falls back to an XDG-ish default only if platformdirs is absent (dev);
+    that fallback uses %APPDATA% on Windows and so differs from the real path.
     """
     if platformdirs is not None:
         return Path(platformdirs.user_config_dir("aurochs-recall"))
