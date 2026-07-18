@@ -82,6 +82,19 @@ env/
 .secrets/
 secrets/
 
+# Claude Code machine-local config. This repo is public, so the tracked CLAUDE.md
+# stays contributor-facing and machine specifics (absolute paths, local state
+# locations) live in CLAUDE.local.md instead. Keep .claude-plugin/ tracked: that is
+# the shipped plugin manifest, not local config.
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Local recall config mirror: a backup of the machine's real sources.toml (holds
+# absolute workspace paths). Kept here so a config wipe never costs archaeology
+# again. Never published: it is not the shipped config, and recall does not
+# auto-discover it (wrong filename).
+sources.local.toml
+
 # -----------------------------------------------------------------------------
 # Personal corpora (sibling dirs that contain real user data)
 # -----------------------------------------------------------------------------
