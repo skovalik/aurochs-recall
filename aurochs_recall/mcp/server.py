@@ -12,8 +12,10 @@ All tools call into ``aurochs_recall.core`` and ``aurochs_recall.cli``
 helpers; the MCP layer is a thin shim. The CLI is the source of truth
 (see CLI reference); MCP behavior follows CLI behavior by construction.
 
-Run via stdio:
+Run via stdio (the `recall-mcp` console script is the canonical entrypoint;
+the module form works too but is not portable across install environments):
 
+    recall-mcp
     python -m aurochs_recall.mcp.server
 
 The server reads `RECALL_DB` from the environment if set; otherwise it

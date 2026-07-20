@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aurochs-recall"
-version = "0.1.0"
+version = "0.2.0"
 description = "Memory architecture for your AI conversations."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -93,6 +93,7 @@ all = [
 
 [project.scripts]
 recall = "aurochs_recall.cli.main:main"
+recall-mcp = "aurochs_recall.mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/skovalik/aurochs-recall"
