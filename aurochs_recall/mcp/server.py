@@ -516,6 +516,12 @@ def build_server() -> Any:
         ),
     )
 
+    # FastMCP exposes no version parameter; set the lowlevel server's
+    # version so initialize advertises the package, not the mcp SDK.
+    from aurochs_recall.core import __version__
+
+    server._mcp_server.version = __version__
+
     @server.tool(
         name="recall_search",
         description=(
